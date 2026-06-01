@@ -3,6 +3,10 @@ import 'package:smartmush_farmer/features/alerts/alerts_screen.dart';
 import 'package:smartmush_farmer/features/auth/login_screen.dart';
 import 'package:smartmush_farmer/features/auth/register_screen.dart';
 import 'package:smartmush_farmer/features/auth/splash_screen.dart';
+import 'package:smartmush_farmer/features/shop/cart_screen.dart';
+import 'package:smartmush_farmer/features/shop/checkout_screen.dart';
+import 'package:smartmush_farmer/features/shop/order_history_screen.dart';
+import 'package:smartmush_farmer/features/shop/product_detail_screen.dart';
 import 'package:smartmush_farmer/features/shop/shop_screen.dart';
 import 'package:smartmush_farmer/features/user/add_automation_rule_screen.dart';
 import 'package:smartmush_farmer/features/user/box_automation_screen.dart';
@@ -65,6 +69,28 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shop',
       builder: (context, state) => const ShopScreen(),
+    ),
+    GoRoute(
+      path: '/shop/product-detail',
+      builder: (context, state) {
+        final productId = state.extra as String? ?? '';
+        return ProductDetailScreen(productId: productId);
+      },
+    ),
+    GoRoute(
+      path: '/shop/cart',
+      builder: (context, state) => const CartScreen(),
+    ),
+    GoRoute(
+      path: '/shop/checkout',
+      builder: (context, state) {
+        final from = state.uri.queryParameters['from'];
+        return CheckoutScreen(from: from);
+      },
+    ),
+    GoRoute(
+      path: '/shop/order-history',
+      builder: (context, state) => const OrderHistoryScreen(),
     ),
     GoRoute(
       path: '/alerts',
