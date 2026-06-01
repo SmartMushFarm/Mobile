@@ -12,7 +12,11 @@ import 'package:smartmush_farmer/features/user/add_automation_rule_screen.dart';
 import 'package:smartmush_farmer/features/user/box_automation_screen.dart';
 import 'package:smartmush_farmer/features/user/box_control_screen.dart';
 import 'package:smartmush_farmer/features/user/box_overview_screen.dart';
+import 'package:smartmush_farmer/features/user/account_settings_screen.dart';
 import 'package:smartmush_farmer/features/user/home_box_list_screen.dart';
+import 'package:smartmush_farmer/features/user/create_maintenance_request_screen.dart';
+import 'package:smartmush_farmer/features/user/maintenance_requests_screen.dart';
+import 'package:smartmush_farmer/features/user/my_devices_screen.dart';
 import 'package:smartmush_farmer/features/user/profile_screen.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -67,6 +71,14 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const ProfileScreen(),
     ),
     GoRoute(
+      path: '/profile/devices',
+      builder: (context, state) => const MyDevicesScreen(),
+    ),
+    GoRoute(
+      path: '/profile/settings',
+      builder: (context, state) => const AccountSettingsScreen(),
+    ),
+    GoRoute(
       path: '/shop',
       builder: (context, state) => const ShopScreen(),
     ),
@@ -95,6 +107,14 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/alerts',
       builder: (context, state) => const AlertsScreen(),
+    ),
+    GoRoute(
+      path: '/maintenance',
+      builder: (context, state) => const MaintenanceRequestsScreen(),
+    ),
+    GoRoute(
+      path: '/maintenance/create',
+      builder: (context, state) => const CreateMaintenanceRequestScreen(),
     ),
   ],
 );

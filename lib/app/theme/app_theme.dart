@@ -111,6 +111,14 @@ class AppColors {
   static const alertRedBg = Color(0xFFFFDAD6);
   static const alertOfflineBg = Color(0xFFE3E2E2);
   static const profileAvatarBorder = Color(0xFFF5F3F3);
+  static const maintenancePendingBg = Color(0xFFFFF4E5);
+  static const maintenancePendingText = Color(0xFFB76E00);
+  static const maintenanceAcceptedBg = Color(0xFFE3F2FD);
+  static const maintenanceAcceptedText = Color(0xFF1976D2);
+  static const maintenanceAssignedBg = Color(0xFFE8F5E9);
+  static const maintenanceAssignedText = Color(0xFF2E7D32);
+  static const maintenanceCompletedBg = Color(0xFFF5F5F5);
+  static const maintenanceCompletedText = Color(0xFF757575);
 }
 
 class AppTextStyles {
@@ -872,6 +880,195 @@ class AppTextStyles {
     height: 28 / 18,
     fontWeight: FontWeight.w700,
     color: Color(0xFF003C0B),
+  );
+
+  // Device screen styles
+  static const deviceCardTitle = TextStyle(
+    fontSize: 20,
+    height: 28 / 20,
+    fontWeight: FontWeight.w600,
+    color: AppColors.shopTextPrimary,
+  );
+
+  static const deviceCardOfflineTitle = TextStyle(
+    fontSize: 20,
+    height: 28 / 20,
+    fontWeight: FontWeight.w600,
+    color: Color(0xFF6F7A6B),
+  );
+
+  static const deviceSensorLabel = TextStyle(
+    fontSize: 10,
+    height: 15 / 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const deviceSensorValue = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w600,
+    color: AppColors.shopTextPrimary,
+  );
+
+  static const deviceActiveBadge = TextStyle(
+    fontSize: 10,
+    height: 15 / 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.5,
+    color: AppColors.alertGreenText,
+  );
+
+  static const deviceOfflineBadge = TextStyle(
+    fontSize: 10,
+    height: 15 / 10,
+    fontWeight: FontWeight.w400,
+    letterSpacing: 0.5,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const deviceActionLabel = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopPrice,
+  );
+
+  static const deviceActionDanger = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.orderStatusCancelled,
+  );
+
+  // Account settings screen styles
+  static const settingsSectionHeader = TextStyle(
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const settingsDangerSectionHeader = TextStyle(
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: AppColors.orderStatusCancelled,
+  );
+
+  static const settingsItemLabel = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextPrimary,
+  );
+
+  static const settingsItemValue = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const settingsSmartFarmBadge = TextStyle(
+    fontSize: 10,
+    height: 15 / 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.5,
+    color: AppColors.alertGreenText,
+  );
+
+  static const settingsSmartFarmBadgeInactive = TextStyle(
+    fontSize: 10,
+    height: 15 / 10,
+    fontWeight: FontWeight.w700,
+    letterSpacing: 0.5,
+    color: AppColors.shopTextSecondary,
+  );
+
+  // Maintenance screen styles
+  static const maintenanceDeviceLabel = TextStyle(
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: AppColors.shopPrice,
+  );
+
+  static const maintenanceTicketTitle = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextPrimary,
+  );
+
+  static const maintenanceTicketDesc = TextStyle(
+    fontSize: 13,
+    height: 19.5 / 13,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const maintenanceSubmittedDate = TextStyle(
+    fontSize: 11,
+    height: 16.5 / 11,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextSecondary,
+  );
+
+  static const maintenanceFilterChip = TextStyle(
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: AppColors.shopTextSecondary,
+  );
+
+  // Maintenance form styles
+  static const formFieldLabel = TextStyle(
+    fontSize: 12,
+    height: 16 / 12,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0.6,
+    color: Color(0xFF6F7A6B),
+  );
+
+  static const formDropdownText = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextPrimary,
+  );
+
+  static const formDropdownPlaceholder = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF9CA3AF),
+  );
+
+  static const formTextareaHint = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF9CA3AF),
+  );
+
+  static const formUrgencyActive = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  static const formUrgencyInactive = TextStyle(
+    fontSize: 16,
+    height: 24 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.shopTextSecondary,
   );
 }
 
