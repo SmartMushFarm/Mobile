@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/auth/widgets/login_form_card.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -11,7 +13,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController(text: 'farmer@smartmush.com');
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
 
@@ -28,17 +30,43 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    if (!mounted) return;
+    try {
+      await AuthService.login(
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+      );
 
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Mock login successful'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng nhập thành công!'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.primary,
+        ),
+      );
+
+      context.go('/home');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      String message = 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
+      if (e is Exception) {
+        message = e.toString().replaceAll('Exception: ', '');
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   void _handleForgotPassword() {

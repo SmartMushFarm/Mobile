@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/auth/widgets/register_form_card.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -12,9 +13,11 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController(text: 'Alex Farmer');
-  final _emailController = TextEditingController(text: 'alex@smartmush.com');
+  final _nameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _addressController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -23,6 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _phoneController.dispose();
+    _addressController.dispose();
     super.dispose();
   }
 
@@ -32,17 +37,46 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
 
     setState(() => _isLoading = true);
-    await Future<void>.delayed(const Duration(milliseconds: 800));
 
-    if (!mounted) return;
+    try {
+      await AuthService.register(
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        password: _passwordController.text,
+        phone: _phoneController.text.trim(),
+        address: _addressController.text.trim(),
+      );
 
-    setState(() => _isLoading = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Mock account created successfully'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+      if (!mounted) return;
+
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đăng ký thành công! Hãy đăng nhập.'),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: AppColors.primary,
+        ),
+      );
+
+      context.go('/login');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      String message = 'Đăng ký thất bại. Vui lòng thử lại.';
+      if (e is Exception) {
+        message = e.toString().replaceAll('Exception: ', '');
+      }
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+    }
   }
 
   @override
@@ -109,6 +143,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
                             nameController: _nameController,
                             emailController: _emailController,
                             passwordController: _passwordController,
+                            phoneController: _phoneController,
+                            addressController: _addressController,
                             obscurePassword: _obscurePassword,
                             isLoading: _isLoading,
                             onTogglePasswordVisibility: () {

@@ -1,13 +1,16 @@
 import '../../../core/network/api_client.dart';
 
 class PresetService {
-  Future<List<dynamic>> getPresets({int? userId}) async {
+  Future<List<dynamic>> getPresets() async {
     try {
-      final response = await ApiClient.instance.get(
-        '/presets',
-        queryParameters: userId != null ? {'userId': userId} : null,
-      );
-      return response.data['data'] as List<dynamic>;
+      final response = await ApiClient.instance.get('/presets');
+      final data = response.data;
+      if (data is List) {
+        return data;
+      } else if (data is Map && data['data'] is List) {
+        return data['data'];
+      }
+      return [];
     } catch (e) {
       rethrow;
     }
@@ -27,6 +30,14 @@ class PresetService {
   }) async {
     try {
       await ApiClient.instance.put('/presets/$id', data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deletePreset(int id) async {
+    try {
+      await ApiClient.instance.delete('/presets/$id');
     } catch (e) {
       rethrow;
     }

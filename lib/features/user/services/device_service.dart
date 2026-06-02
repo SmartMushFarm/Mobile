@@ -1,11 +1,16 @@
-import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 
 class DeviceService {
   Future<List<dynamic>> getMyDevices() async {
     try {
       final response = await ApiClient.instance.get('/devices/my-devices');
-      return response.data['data'] as List<dynamic>;
+      final data = response.data;
+      if (data is List) {
+        return data;
+      } else if (data is Map && data['data'] is List) {
+        return data['data'];
+      }
+      return [];
     } catch (e) {
       rethrow;
     }
@@ -40,14 +45,12 @@ class DeviceService {
     }
   }
 
-  Future<void> updatePreset({
+  Future<void> applyPreset({
     required int deviceId,
     required int presetId,
   }) async {
     try {
-      await ApiClient.instance.put('/devices/$deviceId/preset', data: {
-        'presetId': presetId,
-      });
+      await ApiClient.instance.put('/devices/$deviceId/apply-preset/$presetId');
     } catch (e) {
       rethrow;
     }

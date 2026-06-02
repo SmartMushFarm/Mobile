@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/app_primary_button.dart';
@@ -7,7 +8,9 @@ import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 import 'package:smartmush_farmer/features/user/services/preset_service.dart';
 
 class CreatePresetScreen extends StatefulWidget {
-  const CreatePresetScreen({super.key});
+  const CreatePresetScreen({super.key, this.preset});
+
+  final Map<String, dynamic>? preset;
 
   @override
   State<CreatePresetScreen> createState() => _CreatePresetScreenState();
@@ -18,20 +21,40 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
   final _presetService = PresetService();
   bool _isLoading = false;
 
-  final _nameController = TextEditingController();
-  final _typeController = TextEditingController();
-  final _descController = TextEditingController();
+  late final TextEditingController _nameController;
+  late final TextEditingController _typeController;
+  late final TextEditingController _descController;
 
-  final _mistOnController = TextEditingController(text: '75');
-  final _mistOffController = TextEditingController(text: '85');
-  final _fanOnController = TextEditingController(text: '95');
-  final _fanOffController = TextEditingController(text: '90');
-  final _heaterOnController = TextEditingController(text: '20');
-  final _heaterOffController = TextEditingController(text: '25');
-  final _dangerHumController = TextEditingController(text: '98');
-  final _maxTempController = TextEditingController(text: '35');
-  final _pulseOnController = TextEditingController(text: '10');
-  final _pulseOffController = TextEditingController(text: '60');
+  late final TextEditingController _mistOnController;
+  late final TextEditingController _mistOffController;
+  late final TextEditingController _fanOnController;
+  late final TextEditingController _fanOffController;
+  late final TextEditingController _heaterOnController;
+  late final TextEditingController _heaterOffController;
+  late final TextEditingController _dangerHumController;
+  late final TextEditingController _maxTempController;
+  late final TextEditingController _pulseOnController;
+  late final TextEditingController _pulseOffController;
+
+  @override
+  void initState() {
+    super.initState();
+    final p = widget.preset;
+    _nameController = TextEditingController(text: p?['preset_name']);
+    _typeController = TextEditingController(text: p?['mushroom_type']);
+    _descController = TextEditingController(text: p?['description']);
+
+    _mistOnController = TextEditingController(text: (p?['mist_on_humidity'] ?? '75').toString());
+    _mistOffController = TextEditingController(text: (p?['mist_off_humidity'] ?? '85').toString());
+    _fanOnController = TextEditingController(text: (p?['fan_on_humidity'] ?? '95').toString());
+    _fanOffController = TextEditingController(text: (p?['fan_off_humidity'] ?? '90').toString());
+    _heaterOnController = TextEditingController(text: (p?['heater_on_temp'] ?? '20').toString());
+    _heaterOffController = TextEditingController(text: (p?['heater_off_temp'] ?? '25').toString());
+    _dangerHumController = TextEditingController(text: (p?['danger_humidity'] ?? '98').toString());
+    _maxTempController = TextEditingController(text: (p?['max_temp_danger'] ?? '35').toString());
+    _pulseOnController = TextEditingController(text: (p?['mist_pulse_on_seconds'] ?? '10').toString());
+    _pulseOffController = TextEditingController(text: (p?['mist_pulse_off_seconds'] ?? '60').toString());
+  }
 
   @override
   void dispose() {
@@ -75,7 +98,7 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
       if (heaterOn >= heaterOff) throw Exception('Heater ON temp must be less than OFF temp');
 
       final data = {
-        'created_by': userId,
+        'created_by': widget.preset?['created_by'] ?? userId,
         'preset_name': _nameController.text.trim(),
         'mushroom_type': _typeController.text.trim(),
         'mist_on_humidity': mistOn,
@@ -88,22 +111,44 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
         'max_temp_danger': double.parse(_maxTempController.text),
         'mist_pulse_on_seconds': int.parse(_pulseOnController.text),
         'mist_pulse_off_seconds': int.parse(_pulseOffController.text),
-        'is_recommended': false,
+        'is_recommended': widget.preset?['is_recommended'] ?? false,
         'description': _descController.text.trim(),
       };
 
-      await _presetService.createPreset(data);
+      if (widget.preset != null) {
+        final id = int.parse(widget.preset!['id'].toString());
+        await _presetService.updatePreset(id: id, data: data);
+      } else {
+        await _presetService.createPreset(data);
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preset created successfully')),
+          SnackBar(
+            content: Text(widget.preset != null ? 'Preset updated successfully' : 'Preset created successfully'),
+            backgroundColor: AppColors.primary,
+          ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, true);
       }
     } catch (e) {
+      String errorMessage = e.toString();
+      if (e is DioException && e.response != null && e.response?.data != null) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('message')) {
+          errorMessage = data['message'];
+        } else {
+          errorMessage = data.toString();
+        }
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(
+            content: Text('Lỗi: $errorMessage'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
@@ -113,10 +158,11 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.preset != null;
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       appBar: AppBar(
-        title: Text('Tạo Preset mới', style: GoogleFonts.plusJakartaSans(color: Colors.white)),
+        title: Text(isEditing ? 'Chỉnh sửa Preset' : 'Tạo Preset mới', style: GoogleFonts.plusJakartaSans(color: Colors.white)),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
       ),
@@ -177,7 +223,7 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
                 ],
               ),
               const SizedBox(height: 32),
-              AppPrimaryButton(label: 'Lưu Preset', isLoading: _isLoading, onPressed: _handleSave),
+              AppPrimaryButton(label: isEditing ? 'Cập nhật Preset' : 'Lưu Preset', isLoading: _isLoading, onPressed: _handleSave),
               const SizedBox(height: 40),
             ],
           ),

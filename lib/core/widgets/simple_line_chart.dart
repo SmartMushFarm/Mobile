@@ -15,6 +15,19 @@ class SimpleLineChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (temperatureValues.isEmpty || humidityValues.isEmpty) {
+      return Container(
+        height: 192,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.loginInputBorder),
+        ),
+        child: const Text('Chưa có dữ liệu lịch sử'),
+      );
+    }
+
     return Container(
       height: 192,
       padding: const EdgeInsets.all(17),
