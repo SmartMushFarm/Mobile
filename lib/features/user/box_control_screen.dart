@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/box_tab_bar.dart';
 import 'package:smartmush_farmer/core/widgets/device_control_card.dart';
-import 'package:smartmush_farmer/features/user/data/mock_box_overview.dart';
+import 'package:smartmush_farmer/features/user/services/device_service.dart';
 import 'package:smartmush_farmer/features/user/widgets/box_page_header.dart';
 import 'package:smartmush_farmer/features/user/widgets/box_screen_shell.dart';
 
@@ -21,27 +22,59 @@ class BoxControlScreen extends StatefulWidget {
 }
 
 class _BoxControlScreenState extends State<BoxControlScreen> {
-  late final Map<String, bool> _deviceStates;
-  late final Map<String, bool> _scheduleStates;
-  bool _isManualOverride = false;
+  final DeviceService _deviceService = DeviceService();
+  final Map<String, bool> _deviceStates = {
+    'fan': false,
+    'heater': false,
+    'mist': false,
+  };
+  String _mode = 'Auto';
+  String _boxName = 'Thiết bị';
+  bool _isLoading = true;
+
+  int? _presetId;
 
   @override
   void initState() {
     super.initState();
-    final data = mockBoxOverviewFor(widget.boxId);
-    final ledOn = data?.devices.ledOn ?? true;
-    final fanOn = data?.devices.fanOn ?? true;
-    _deviceStates = {
-      'led': ledOn,
-      'ventilationFan': fanOn,
-      'mist': data?.devices.mistOn ?? false,
-      'exhaustFan': false,
-    };
-    _scheduleStates = {
-      'ledSchedule': true,
-      'mistInterval': true,
-      'fanAutoCycle': true,
-    };
+    _fetchDeviceStatus();
+  }
+
+  Future<void> _fetchDeviceStatus() async {
+    setState(() => _isLoading = true);
+    try {
+      final List<dynamic> devices = await _deviceService.getMyDevices();
+      final dynamic device = devices.firstWhere(
+        (d) => d['id'].toString() == widget.boxId,
+        orElse: () => null,
+      );
+
+      if (device != null) {
+        setState(() {
+          _boxName = device['device_name'] ?? 'Thiết bị';
+          _mode = device['mode'] ?? 'Auto';
+          
+          final rawPresetId = device['preset_id'];
+          _presetId = rawPresetId == null 
+              ? null 
+              : (rawPresetId is int ? rawPresetId : int.tryParse(rawPresetId.toString()));
+
+          _deviceStates['fan'] = device['fan_status'] == 'on';
+          _deviceStates['heater'] = device['heater_status'] == 'on';
+          _deviceStates['mist'] = device['mist_status'] == 'on';
+          _isLoading = false;
+        });
+      } else {
+        setState(() => _isLoading = false);
+      }
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
   }
 
   void _onTabSelected(BuildContext context, BoxTab tab) {
@@ -55,44 +88,102 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
     }
   }
 
-  void _toggleDevice(String key, bool value) {
-    setState(() {
-      _deviceStates[key] = value;
-      if (value) {
-        _isManualOverride = true;
-      } else {
-        final anyOn = _deviceStates.values.any((v) => v);
-        _isManualOverride = anyOn;
+  Future<void> _toggleDevice(String key, bool value) async {
+    if (_mode == 'Auto' && key != 'all') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Chuyển sang chế độ Manual để điều khiển thủ công')),
+      );
+      return;
+    }
+
+    final String action = value ? 'on' : 'off';
+    try {
+      await _deviceService.controlDevice(
+        deviceId: int.parse(widget.boxId),
+        device: key,
+        action: action,
+      );
+      setState(() {
+        if (key == 'all') {
+          _deviceStates.updateAll((k, v) => false);
+        } else {
+          _deviceStates[key] = value;
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã gửi lệnh điều khiển'), duration: Duration(seconds: 1)),
+        );
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
   }
 
-  void _toggleSchedule(String key, bool value) {
-    setState(() {
-      _scheduleStates[key] = value;
-    });
+  Future<void> _toggleMode() async {
+    final newMode = _mode == 'Auto' ? 'Manual' : 'Auto';
+
+    if (newMode == 'Auto' && _presetId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Vui lòng chọn một Preset trước khi sử dụng chế độ Auto'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      // Chuyển sang tab tự động để user chọn preset
+      context.push('/box/automation', extra: widget.boxId);
+      return;
+    }
+
+    try {
+      await _deviceService.updateMode(
+        deviceId: int.parse(widget.boxId),
+        mode: newMode,
+      );
+      setState(() {
+        _mode = newMode;
+        if (newMode == 'Manual') {
+          _presetId = null; // Backend tự động gán null khi sang Manual
+        }
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Đã chuyển sang chế độ $newMode')),
+        );
+      }
+    } catch (e) {
+      String errorMessage = e.toString();
+      if (e is DioException && e.response != null && e.response?.data != null) {
+        final data = e.response?.data;
+        if (data is Map && data.containsKey('message')) {
+          errorMessage = data['message'];
+        } else {
+          errorMessage = data.toString();
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: $errorMessage'),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final data = mockBoxOverviewFor(widget.boxId);
-
-    if (data == null) {
-      return Scaffold(
+    if (_isLoading) {
+      return const Scaffold(
         backgroundColor: AppColors.loginBackground,
-        appBar: AppBar(
-          backgroundColor: AppColors.loginBackground,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back, color: AppColors.loginLabel),
-            onPressed: () => context.pop(),
-          ),
-        ),
-        body: Center(
-          child: Text(
-            'Không tìm thấy hộp',
-            style: GoogleFonts.inter(textStyle: AppTextStyles.loginSubtitle),
-          ),
-        ),
+        body: Center(child: CircularProgressIndicator()),
       );
     }
 
@@ -101,140 +192,77 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
       selectedTab: BoxTab.control,
       onTabSelected: (tab) => _onTabSelected(context, tab),
       header: BoxPageHeader(
-        boxName: data.name,
-        statusLabel: data.growStatusLabel,
+        boxName: _boxName,
+        statusLabel: 'Chế độ: $_mode',
       ),
-      body: _ControlTabContent(
-        deviceStates: _deviceStates,
-        scheduleStates: _scheduleStates,
-        isManualOverride: _isManualOverride,
-        onToggleDevice: _toggleDevice,
-        onToggleSchedule: _toggleSchedule,
-        onOpenAutomation: () => context.push('/box/automation', extra: widget.boxId),
-      ),
-    );
-  }
-}
-
-class _ControlTabContent extends StatelessWidget {
-  const _ControlTabContent({
-    required this.deviceStates,
-    required this.scheduleStates,
-    required this.isManualOverride,
-    required this.onToggleDevice,
-    required this.onToggleSchedule,
-    required this.onOpenAutomation,
-  });
-
-  final Map<String, bool> deviceStates;
-  final Map<String, bool> scheduleStates;
-  final bool isManualOverride;
-  final void Function(String, bool) onToggleDevice;
-  final void Function(String, bool) onToggleSchedule;
-  final VoidCallback onOpenAutomation;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _SectionHeader(
-          title: 'Điều khiển thiết bị',
-          subtitle: 'Quản lý môi trường trồng thông minh',
-        ),
-        const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 2,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          childAspectRatio: 1.05,
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DeviceControlCard(
-              icon: Icons.wb_sunny,
-              label: 'Đèn LED trồng',
-              statusText: deviceStates['led']! ? 'BẬT' : 'TẮT',
-              isOn: deviceStates['led']!,
-              onToggle: (v) => onToggleDevice('led', v),
-              subStatusText: deviceStates['led']! ? 'Độ sáng: 100%' : null,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                _SectionHeader(
+                  title: 'Điều khiển thiết bị',
+                  subtitle: _mode == 'Auto' ? 'Chế độ tự động đang chạy' : 'Quản lý thủ công',
+                ),
+                Switch(
+                  value: _mode == 'Auto',
+                  onChanged: (v) => _toggleMode(),
+                  activeColor: AppColors.primary,
+                ),
+              ],
             ),
-            DeviceControlCard(
-              icon: Icons.air,
-              label: 'Quạt thông gió',
-              statusText: deviceStates['ventilationFan']! ? 'BẬT' : 'TẮT',
-              isOn: deviceStates['ventilationFan']!,
-              onToggle: (v) => onToggleDevice('ventilationFan', v),
-              subStatusText: deviceStates['ventilationFan']! ? 'Tốc độ: Trung bình' : null,
+            const SizedBox(height: 16),
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 16,
+              crossAxisSpacing: 16,
+              childAspectRatio: 1.05,
+              children: [
+                DeviceControlCard(
+                  icon: Icons.air,
+                  label: 'Quạt thông gió',
+                  statusText: _deviceStates['fan']! ? 'BẬT' : 'TẮT',
+                  isOn: _deviceStates['fan']!,
+                  onToggle: (v) => _toggleDevice('fan', v),
+                  subStatusText: _mode == 'Auto' ? 'Auto mode' : null,
+                ),
+                DeviceControlCard(
+                  icon: Icons.water_drop,
+                  label: 'Máy phun sương',
+                  statusText: _deviceStates['mist']! ? 'BẬT' : 'TẮT',
+                  isOn: _deviceStates['mist']!,
+                  onToggle: (v) => _toggleDevice('mist', v),
+                  subStatusText: _mode == 'Auto' ? 'Auto mode' : null,
+                ),
+                DeviceControlCard(
+                  icon: Icons.wb_sunny,
+                  label: 'Máy sưởi',
+                  statusText: _deviceStates['heater']! ? 'BẬT' : 'TẮT',
+                  isOn: _deviceStates['heater']!,
+                  onToggle: (v) => _toggleDevice('heater', v),
+                  subStatusText: _mode == 'Auto' ? 'Auto mode' : null,
+                ),
+                DeviceControlCard(
+                  icon: Icons.power_off,
+                  label: 'Tắt tất cả',
+                  statusText: 'OFF',
+                  isOn: false,
+                  onToggle: (v) => _toggleDevice('all', false),
+                  subStatusText: 'Chế độ an toàn',
+                ),
+              ],
             ),
-            DeviceControlCard(
-              icon: Icons.water_drop,
-              label: 'Hệ thống phun sương',
-              statusText: deviceStates['mist']! ? 'BẬT' : 'TẮT',
-              isOn: deviceStates['mist']!,
-              onToggle: (v) => onToggleDevice('mist', v),
-              subStatusText: deviceStates['mist']! ? null : 'Lần cuối: 12 phút trước',
-            ),
-            DeviceControlCard(
-              icon: Icons.wind_power,
-              label: 'Quạt hút',
-              statusText: deviceStates['exhaustFan']! ? 'BẬT' : 'TẮT',
-              isOn: deviceStates['exhaustFan']!,
-              onToggle: (v) => onToggleDevice('exhaustFan', v),
-              subStatusText: deviceStates['exhaustFan']! ? null : 'Chờ',
-            ),
+            const SizedBox(height: 24),
+            _ManualOverrideNotice(isVisible: _mode == 'Manual'),
+            const SizedBox(height: 24),
+            _OpenAutomationButton(onTap: () => context.push('/box/automation', extra: widget.boxId)),
           ],
         ),
-        const SizedBox(height: 24),
-        _ManualOverrideNotice(isVisible: isManualOverride),
-        const SizedBox(height: 24),
-        _SectionHeader(
-          title: 'Lịch trình',
-          subtitle: null,
-        ),
-        const SizedBox(height: 16),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.splashTrack),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x1A4CAF50),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Column(
-            children: [
-              _ScheduleItem(
-                title: 'Lịch đèn LED',
-                scheduleText: 'BẬT 06:00 \u2192 TẮT 18:00',
-                isEnabled: scheduleStates['ledSchedule']!,
-                onToggle: (v) => onToggleSchedule('ledSchedule', v),
-                showDivider: true,
-              ),
-              _ScheduleItem(
-                title: 'Khoảng phun sương',
-                scheduleText: 'Mỗi 30 phút',
-                isEnabled: scheduleStates['mistInterval']!,
-                onToggle: (v) => onToggleSchedule('mistInterval', v),
-                showDivider: true,
-              ),
-              _ScheduleItem(
-                title: 'Chu kỳ quạt tự động',
-                scheduleText: 'BẬT 5 phút mỗi giờ',
-                isEnabled: scheduleStates['fanAutoCycle']!,
-                onToggle: (v) => onToggleSchedule('fanAutoCycle', v),
-                showDivider: false,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        _OpenAutomationButton(onTap: onOpenAutomation),
-      ],
+      ),
     );
   }
 }
@@ -311,7 +339,7 @@ class _ManualOverrideNotice extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: Text(
-              'Tự động hóa tạm dừng 30 phút do điều khiển thủ công.',
+              'Đang ở chế độ điều khiển thủ công. Tự động hóa sẽ không chạy.',
               style: GoogleFonts.inter(
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
@@ -320,128 +348,6 @@ class _ManualOverrideNotice extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _ScheduleItem extends StatelessWidget {
-  const _ScheduleItem({
-    required this.title,
-    required this.scheduleText,
-    required this.isEnabled,
-    required this.onToggle,
-    required this.showDivider,
-  });
-
-  final String title;
-  final String scheduleText;
-  final bool isEnabled;
-  final ValueChanged<bool> onToggle;
-  final bool showDivider;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.splashTitle,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      scheduleText,
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        color: AppColors.loginLabel,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _InlineScheduleToggle(isOn: isEnabled, onToggle: onToggle),
-            ],
-          ),
-        ),
-        if (showDivider)
-          const Divider(
-            height: 1,
-            thickness: 1,
-            color: AppColors.splashTrack,
-          ),
-      ],
-    );
-  }
-}
-
-class _InlineScheduleToggle extends StatelessWidget {
-  const _InlineScheduleToggle({
-    required this.isOn,
-    required this.onToggle,
-  });
-
-  final bool isOn;
-  final ValueChanged<bool> onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => onToggle(!isOn),
-      child: SizedBox(
-        width: 52,
-        height: 32,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isOn
-                      ? const Color(0xFF68D391)
-                      : AppColors.splashTrack,
-                  borderRadius: BorderRadius.circular(999),
-                ),
-              ),
-            ),
-            AnimatedPositioned(
-              duration: const Duration(milliseconds: 200),
-              top: isOn ? -4 : 0,
-              right: isOn ? -4 : 0,
-              child: Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(
-                  color: isOn ? AppColors.primary : Colors.white,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: isOn ? AppColors.primary : AppColors.splashTrack,
-                    width: 4,
-                  ),
-                ),
-                child: isOn
-                    ? const Icon(
-                        Icons.power_settings_new,
-                        size: 14,
-                        color: Colors.white,
-                      )
-                    : null,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

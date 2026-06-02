@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/brand_logo_badge.dart';
 import 'package:smartmush_farmer/core/widgets/splash_loading_bar.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -19,7 +20,6 @@ class _SplashScreenState extends State<SplashScreen>
   static const _splashDuration = Duration(milliseconds: 2200);
 
   late final AnimationController _controller;
-  Timer? _navigationTimer;
 
   @override
   void initState() {
@@ -29,16 +29,23 @@ class _SplashScreenState extends State<SplashScreen>
       duration: _splashDuration,
     )..forward();
 
-    _navigationTimer = Timer(_splashDuration, () {
-      if (mounted) {
-        context.go('/login');
-      }
-    });
+    _checkLoginAndNavigate();
+  }
+
+  Future<void> _checkLoginAndNavigate() async {
+    await Future.delayed(_splashDuration);
+    if (!mounted) return;
+
+    final loggedIn = await AuthService.isLoggedIn();
+    if (loggedIn) {
+      context.go('/home');
+    } else {
+      context.go('/login');
+    }
   }
 
   @override
   void dispose() {
-    _navigationTimer?.cancel();
     _controller.dispose();
     super.dispose();
   }

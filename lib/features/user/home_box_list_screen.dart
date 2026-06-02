@@ -5,7 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/box_card.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
-import 'package:smartmush_farmer/features/user/data/mock_boxes.dart';
+import 'package:smartmush_farmer/features/user/models/mushroom_box.dart';
+import 'package:smartmush_farmer/features/user/services/device_service.dart';
 
 class HomeBoxListScreen extends StatefulWidget {
   const HomeBoxListScreen({super.key});
@@ -16,6 +17,50 @@ class HomeBoxListScreen extends StatefulWidget {
 
 class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
   UserNavItem _currentNav = UserNavItem.home;
+  final DeviceService _deviceService = DeviceService();
+  List<MushroomBox> _boxes = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDevices();
+  }
+
+  Future<void> _fetchDevices() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final List<dynamic> data = await _deviceService.getMyDevices();
+      setState(() {
+        _boxes = data.map((d) {
+          // Áp dụng linh hoạt mapping từ API sang Model
+          return MushroomBox(
+            id: d['id'].toString(),
+            name: d['device_name'] ?? d['name'] ?? 'Thiết bị không tên',
+            isOnline: d['status'] == 'Online' || d['isOnline'] == true,
+            temperatureCelsius: (d['current_temperature'] ?? d['temperatureCelsius'] ?? 0).toInt(),
+            humidityPercent: (d['current_humidity'] ?? d['humidityPercent'] ?? 0).toInt(),
+            lightActive: d['mist_status'] == 'on' || d['lightActive'] == true,
+            fanActive: d['fan_status'] == 'on' || d['fanActive'] == true,
+          );
+        }).toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Không thể tải danh sách thiết bị';
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+      );
+    }
+  }
 
   void _onNavSelected(UserNavItem item) {
     if (item == UserNavItem.home) {
@@ -68,30 +113,57 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
               alignment: Alignment.topCenter,
               child: ConstrainedBox(
                 constraints: BoxConstraints(maxWidth: maxWidth),
-                child: CustomScrollView(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: _HomeHeader(),
-                    ),
-                    SliverPadding(
-                      padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                      sliver: SliverList.separated(
-                        itemCount: mockMushroomBoxes.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 16),
-                        itemBuilder: (context, index) {
-                          final box = mockMushroomBoxes[index];
-                          return BoxCard(
-                            box: box,
-                            onTap: () => context.push(
-                              '/box/overview',
-                              extra: box.id,
-                            ),
-                          );
-                        },
+                child: RefreshIndicator(
+                  onRefresh: _fetchDevices,
+                  child: CustomScrollView(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: _HomeHeader(),
                       ),
-                    ),
-                  ],
+                      if (_isLoading)
+                        const SliverFillRemaining(
+                          child: Center(child: CircularProgressIndicator()),
+                        )
+                      else if (_errorMessage != null)
+                        SliverFillRemaining(
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(_errorMessage!),
+                                TextButton(
+                                  onPressed: _fetchDevices,
+                                  child: const Text('Thử lại'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_boxes.isEmpty)
+                        const SliverFillRemaining(
+                          child: Center(child: Text('Bạn chưa có thiết bị nào.')),
+                        )
+                      else
+                        SliverPadding(
+                          padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                          sliver: SliverList.separated(
+                            itemCount: _boxes.length,
+                            separatorBuilder: (context, index) =>
+                                const SizedBox(height: 16),
+                            itemBuilder: (context, index) {
+                              final box = _boxes[index];
+                              return BoxCard(
+                                box: box,
+                                onTap: () => context.push(
+                                  '/box/overview',
+                                  extra: box.id,
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             );

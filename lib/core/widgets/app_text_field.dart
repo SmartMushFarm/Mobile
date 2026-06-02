@@ -19,6 +19,7 @@ class AppTextField extends StatelessWidget {
     this.labelPadding = const EdgeInsets.only(left: 4),
     this.contentPadding = const EdgeInsets.fromLTRB(49, 19, 17, 19),
     this.hintStyle,
+    this.maxLines = 1,
   });
 
   final String label;
@@ -35,6 +36,7 @@ class AppTextField extends StatelessWidget {
   final EdgeInsets labelPadding;
   final EdgeInsets contentPadding;
   final TextStyle? hintStyle;
+  final int? maxLines;
 
   @override
   Widget build(BuildContext context) {
@@ -55,6 +57,7 @@ class AppTextField extends StatelessWidget {
           keyboardType: keyboardType,
           textInputAction: textInputAction,
           validator: validator,
+          maxLines: maxLines,
           style: GoogleFonts.inter(textStyle: AppTextStyles.loginFieldText),
           decoration: InputDecoration(
             hintText: hintText,

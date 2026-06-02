@@ -15,7 +15,9 @@ import 'package:smartmush_farmer/features/user/box_overview_screen.dart';
 import 'package:smartmush_farmer/features/user/account_settings_screen.dart';
 import 'package:smartmush_farmer/features/user/home_box_list_screen.dart';
 import 'package:smartmush_farmer/features/user/create_maintenance_request_screen.dart';
+import 'package:smartmush_farmer/features/user/create_preset_screen.dart';
 import 'package:smartmush_farmer/features/user/maintenance_requests_screen.dart';
+import 'package:smartmush_farmer/features/user/preset_list_screen.dart';
 import 'package:smartmush_farmer/features/user/my_devices_screen.dart';
 import 'package:smartmush_farmer/features/user/profile_screen.dart';
 
@@ -65,6 +67,14 @@ final GoRouter appRouter = GoRouter(
         final boxId = state.extra as String? ?? '';
         return AddAutomationRuleScreen(boxId: boxId);
       },
+    ),
+    GoRoute(
+      path: '/presets',
+      builder: (context, state) => const PresetListScreen(),
+    ),
+    GoRoute(
+      path: '/presets/create',
+      builder: (context, state) => const CreatePresetScreen(),
     ),
     GoRoute(
       path: '/profile',

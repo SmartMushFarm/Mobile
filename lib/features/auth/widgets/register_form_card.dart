@@ -10,6 +10,8 @@ class RegisterFormCard extends StatelessWidget {
     required this.nameController,
     required this.emailController,
     required this.passwordController,
+    required this.phoneController,
+    required this.addressController,
     required this.obscurePassword,
     required this.isLoading,
     required this.onTogglePasswordVisibility,
@@ -21,6 +23,8 @@ class RegisterFormCard extends StatelessWidget {
   final TextEditingController nameController;
   final TextEditingController emailController;
   final TextEditingController passwordController;
+  final TextEditingController phoneController;
+  final TextEditingController addressController;
   final bool obscurePassword;
   final bool isLoading;
   final VoidCallback onTogglePasswordVisibility;
@@ -102,6 +106,47 @@ class RegisterFormCard extends StatelessWidget {
                 }
                 if (!value.contains('@')) {
                   return 'Email không hợp lệ';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            AppTextField(
+              label: 'Số điện thoại',
+              controller: phoneController,
+              hintText: '0123456789',
+              prefixIcon: Icons.phone_outlined,
+              labelSpacing: 8,
+              labelPadding: EdgeInsets.zero,
+              contentPadding: _fieldPadding,
+              hintStyle: AppTextStyles.loginFieldHint.copyWith(
+                color: AppColors.registerHintMuted,
+              ),
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Số điện thoại bắt buộc';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 12),
+            AppTextField(
+              label: 'Địa chỉ',
+              controller: addressController,
+              hintText: 'Hồ Chí Minh',
+              prefixIcon: Icons.location_on_outlined,
+              labelSpacing: 8,
+              labelPadding: EdgeInsets.zero,
+              contentPadding: _fieldPadding,
+              hintStyle: AppTextStyles.loginFieldHint.copyWith(
+                color: AppColors.registerHintMuted,
+              ),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Địa chỉ bắt buộc';
                 }
                 return null;
               },
