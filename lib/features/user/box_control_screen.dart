@@ -40,7 +40,14 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
     _fetchDeviceStatus();
   }
 
+  bool _isStatusOn(dynamic value) {
+    if (value == null) return false;
+    final s = value.toString().toLowerCase();
+    return s == 'on' || s == '1' || s == 'true' || s == 'active';
+  }
+
   Future<void> _fetchDeviceStatus() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final List<dynamic> devices = await _deviceService.getMyDevices();
@@ -59,19 +66,19 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
               ? null 
               : (rawPresetId is int ? rawPresetId : int.tryParse(rawPresetId.toString()));
 
-          _deviceStates['fan'] = device['fan_status'] == 'on';
-          _deviceStates['heater'] = device['heater_status'] == 'on';
-          _deviceStates['mist'] = device['mist_status'] == 'on';
+          _deviceStates['fan'] = _isStatusOn(device['fan_status']);
+          _deviceStates['heater'] = _isStatusOn(device['heater_status']);
+          _deviceStates['mist'] = _isStatusOn(device['mist_status']);
           _isLoading = false;
         });
       } else {
         setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi: $e')),
+          SnackBar(content: Text('Lỗi tải trạng thái: $e')),
         );
       }
     }
@@ -110,6 +117,12 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
           _deviceStates[key] = value;
         }
       });
+
+      // Đợi 1 chút để DB cập nhật rồi tải lại trạng thái thật
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _fetchDeviceStatus();
+      });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Đã gửi lệnh điều khiển'), duration: Duration(seconds: 1)),

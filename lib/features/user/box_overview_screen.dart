@@ -34,7 +34,14 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
     _fetchBoxData();
   }
 
+  bool _isStatusOn(dynamic value) {
+    if (value == null) return false;
+    final s = value.toString().toLowerCase();
+    return s == 'on' || s == '1' || s == 'true' || s == 'active';
+  }
+
   Future<void> _fetchBoxData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final List<dynamic> devices = await _deviceService.getMyDevices();
@@ -53,17 +60,16 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
         final List<double> tempTrend = historyData
             .map((h) => (h['temperature'] ?? 0.0).toDouble())
             .toList()
-            .reversed
             .cast<double>()
             .toList();
         final List<double> humTrend = historyData
             .map((h) => (h['humidity'] ?? 0.0).toDouble())
             .toList()
-            .reversed
             .cast<double>()
             .toList();
 
-        final List<ActivityLogEntry> logs = historyData.take(5).map((h) {
+        // Lấy 5 cái mới nhất (nằm ở cuối list) để hiện lên đầu danh sách logs
+        final List<ActivityLogEntry> logs = historyData.reversed.take(5).map((h) {
           final time = DateTime.tryParse(h['created_at'] ?? '') ?? DateTime.now();
           return ActivityLogEntry(
             timeLabel: '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
@@ -71,36 +77,39 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
           );
         }).toList();
 
-        setState(() {
-          _data = BoxOverviewData(
-            id: device['id'].toString(),
-            name: device['device_name'] ?? 'Thiết bị',
-            growStatusLabel: 'Đang hoạt động - ${device['mode'] ?? 'Auto'}',
-            sensors: BoxSensorReading(
-              temperatureCelsius: (device['current_temperature'] ?? 0).toInt(),
-              temperatureTrend: tempTrend.isNotEmpty ? tempTrend.last - (tempTrend.length > 1 ? tempTrend[tempTrend.length - 2] : tempTrend.last) : 0.0,
-              humidityPercent: (device['current_humidity'] ?? 0).toInt(),
-              co2Ppm: 450,
-              co2LevelProgress: 0.45,
-              substrateMoisturePercent: 65,
-            ),
-            devices: BoxDeviceState(
-              ledOn: false,
-              fanOn: device['fan_status'] == 'on',
-              mistOn: device['mist_status'] == 'on',
-            ),
-            temperatureTrend: tempTrend,
-            humidityTrend: humTrend,
-            activityLogs: logs,
-          );
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _data = BoxOverviewData(
+              id: device['id'].toString(),
+              name: device['device_name'] ?? 'Thiết bị',
+              growStatusLabel: 'Đang hoạt động - ${device['mode'] ?? 'Auto'}',
+              sensors: BoxSensorReading(
+                temperatureCelsius: (device['current_temperature'] ?? 0).toInt(),
+                temperatureTrend: tempTrend.isNotEmpty ? tempTrend.last - (tempTrend.length > 1 ? tempTrend[tempTrend.length - 2] : tempTrend.last) : 0.0,
+                humidityPercent: (device['current_humidity'] ?? 0).toInt(),
+                co2Ppm: 450,
+                co2LevelProgress: 0.45,
+                substrateMoisturePercent: 65,
+              ),
+              devices: BoxDeviceState(
+                ledOn: false,
+                fanOn: _isStatusOn(device['fan_status']),
+                mistOn: _isStatusOn(device['mist_status']),
+                heaterOn: _isStatusOn(device['heater_status']),
+              ),
+              temperatureTrend: tempTrend,
+              humidityTrend: humTrend,
+              activityLogs: logs,
+            );
+            _isLoading = false;
+          });
+        }
       } else {
-        setState(() => _isLoading = false);
+        if (mounted) setState(() => _isLoading = false);
       }
     } catch (e) {
-      setState(() => _isLoading = false);
       if (mounted) {
+        setState(() => _isLoading = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
         );

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
@@ -28,6 +29,12 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
     _fetchDevices();
   }
 
+  bool _isStatusOn(dynamic value) {
+    if (value == null) return false;
+    final s = value.toString().toLowerCase();
+    return s == 'on' || s == '1' || s == 'true' || s == 'active';
+  }
+
   Future<void> _fetchDevices() async {
     setState(() {
       _isLoading = true;
@@ -42,11 +49,11 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
           return MushroomBox(
             id: d['id'].toString(),
             name: d['device_name'] ?? d['name'] ?? 'Thiết bị không tên',
-            isOnline: d['status'] == 'Online' || d['isOnline'] == true,
+            isOnline: d['status'] == 'Online' || d['status'] == 'Active' || d['isOnline'] == true,
             temperatureCelsius: (d['current_temperature'] ?? d['temperatureCelsius'] ?? 0).toInt(),
             humidityPercent: (d['current_humidity'] ?? d['humidityPercent'] ?? 0).toInt(),
-            lightActive: d['mist_status'] == 'on' || d['lightActive'] == true,
-            fanActive: d['fan_status'] == 'on' || d['fanActive'] == true,
+            lightActive: _isStatusOn(d['mist_status']),
+            fanActive: _isStatusOn(d['fan_status']),
           );
         }).toList();
         _isLoading = false;
@@ -175,6 +182,35 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
 }
 
 class _HomeHeader extends StatelessWidget {
+  String _getGreeting() {
+    // Lấy giờ hiện tại của thiết bị (mặc định theo múi giờ hệ thống)
+    final hour = DateTime.now().hour;
+    if (hour >= 5 && hour < 12) return 'Chào buổi sáng,';
+    if (hour >= 12 && hour < 18) return 'Chào buổi chiều,';
+    if (hour >= 18 && hour < 22) return 'Chào buổi tối,';
+    return 'Chúc ngủ ngon,';
+  }
+
+  String _getFormattedDate() {
+    final now = DateTime.now();
+    final weekdayMap = {
+      DateTime.monday: 'Thứ Hai',
+      DateTime.tuesday: 'Thứ Ba',
+      DateTime.wednesday: 'Thứ Tư',
+      DateTime.thursday: 'Thứ Năm',
+      DateTime.friday: 'Thứ Sáu',
+      DateTime.saturday: 'Thứ Bảy',
+      DateTime.sunday: 'Chủ Nhật',
+    };
+    
+    final dayOfWeek = weekdayMap[now.weekday];
+    final day = now.day.toString().padLeft(2, '0');
+    final month = now.month.toString().padLeft(2, '0');
+    final year = now.year;
+    
+    return '$dayOfWeek, $day/$month/$year';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -211,14 +247,14 @@ class _HomeHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'T2, 24 thg 10',
+                      _getFormattedDate(),
                       style: GoogleFonts.inter(
                         textStyle: AppTextStyles.loginSubtitle,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'Chào buổi sáng,',
+                      _getGreeting(),
                       style: GoogleFonts.plusJakartaSans(
                         textStyle: AppTextStyles.homeGreeting,
                       ),

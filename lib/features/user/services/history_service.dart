@@ -8,7 +8,11 @@ class HistoryService {
     try {
       final response = await ApiClient.instance.get(
         '/history/device/$deviceId',
-        queryParameters: {'limit': limit},
+        queryParameters: {
+          'limit': limit,
+          'sort': 'desc', // Thử yêu cầu sắp xếp giảm dần để lấy cái mới nhất
+          'order': 'desc',
+        },
       );
       return response.data['data'] as List<dynamic>;
     } catch (e) {

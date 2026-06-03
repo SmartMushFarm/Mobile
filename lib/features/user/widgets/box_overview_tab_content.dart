@@ -28,35 +28,9 @@ class BoxOverviewTabContent extends StatelessWidget {
           trend: sensors.temperatureTrend,
         ),
         const SizedBox(height: 12),
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                child: SensorCard.humidity(
-                  value: '${sensors.humidityPercent}',
-                  unit: '%',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: SizedBox(
-                  height: 158,
-                  child: SensorCard.co2(
-                    value: '${sensors.co2Ppm}',
-                    unit: 'ppm',
-                    progress: sensors.co2LevelProgress,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        SensorCard.moisture(
-          value: '${sensors.substrateMoisturePercent}',
+        SensorCard.humidity(
+          value: '${sensors.humidityPercent}',
           unit: '%',
-          progress: sensors.substrateMoisturePercent / 100,
         ),
         const SizedBox(height: 24),
         Text(
@@ -71,11 +45,6 @@ class BoxOverviewTabContent extends StatelessWidget {
           runSpacing: 12,
           children: [
             DeviceStatusChip(
-              label: 'Đèn LED',
-              icon: Icons.wb_sunny_outlined,
-              isActive: devices.ledOn,
-            ),
-            DeviceStatusChip(
               label: 'Quạt',
               icon: Icons.air,
               isActive: devices.fanOn,
@@ -84,6 +53,11 @@ class BoxOverviewTabContent extends StatelessWidget {
               label: 'Phun sương',
               icon: Icons.water_outlined,
               isActive: devices.mistOn,
+            ),
+            DeviceStatusChip(
+              label: 'Máy sưởi',
+              icon: Icons.wb_sunny_outlined,
+              isActive: devices.heaterOn,
             ),
           ],
         ),
