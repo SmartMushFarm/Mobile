@@ -21,11 +21,13 @@ class BoxDeviceState {
     required this.ledOn,
     required this.fanOn,
     required this.mistOn,
+    required this.heaterOn,
   });
 
   final bool ledOn;
   final bool fanOn;
   final bool mistOn;
+  final bool heaterOn;
 }
 
 class ActivityLogEntry {
