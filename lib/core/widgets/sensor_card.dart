@@ -120,7 +120,14 @@ class _TemperatureLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final trendText = trend >= 0 ? '↑ ${trend.abs()}°' : '↓ ${trend.abs()}°';
+    // Format số lẻ của trend cho đẹp (VD: 0.03)
+    final trendValue = trend.toStringAsFixed(2);
+    final isPositive = trend >= 0;
+    final trendText = '${isPositive ? '↑' : '↓'} $trendValue°';
+    
+    // Giả sử nhiệt độ tối đa hiển thị trên vòng cung là 50 độ
+    final double tempVal = double.tryParse(value) ?? 0;
+    final double progress = (tempVal / 50).clamp(0.0, 1.0);
 
     return Row(
       children: [
@@ -142,40 +149,62 @@ class _TemperatureLayout extends StatelessWidget {
                       textStyle: AppTextStyles.sensorLargeValue,
                     ),
                   ),
-                  Text(
-                    unit,
-                    style: GoogleFonts.plusJakartaSans(
-                      textStyle: AppTextStyles.sensorUnit,
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0, left: 2),
+                    child: Text(
+                      unit,
+                      style: GoogleFonts.plusJakartaSans(
+                        textStyle: AppTextStyles.sensorUnit,
+                      ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(
-                    trend >= 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                    size: 12,
-                    color: AppColors.loginLink,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    trendText,
-                    style: GoogleFonts.inter(
-                      textStyle: AppTextStyles.sensorTrend,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isPositive ? Colors.orange : Colors.blue).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      isPositive ? Icons.trending_up : Icons.arrow_downward,
+                      size: 14,
+                      color: isPositive ? Colors.orange : Colors.blue,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 4),
+                    Text(
+                      trendText,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isPositive ? Colors.orange : Colors.blue,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
         ),
-        SizedBox(
-          width: 96,
-          height: 64,
-          child: CustomPaint(
-            painter: _SemiCircleGaugePainter(progress: 0.72),
-          ),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: CustomPaint(
+                painter: _ModernGaugePainter(
+                  progress: progress,
+                  color: AppColors.loginLink,
+                ),
+              ),
+            ),
+            Icon(Icons.wb_sunny_outlined, color: AppColors.loginLink.withOpacity(0.5), size: 24),
+          ],
         ),
       ],
     );
@@ -343,6 +372,54 @@ class _MoistureLayout extends StatelessWidget {
       ],
     );
   }
+}
+
+class _ModernGaugePainter extends CustomPainter {
+  _ModernGaugePainter({required this.progress, required this.color});
+
+  final double progress;
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2;
+    const strokeWidth = 6.0;
+
+    final trackPaint = Paint()
+      ..color = AppColors.splashTrack.withOpacity(0.3)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    final progressPaint = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round;
+
+    // Vẽ vòng tròn nền
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      0.75 * math.pi,
+      1.5 * math.pi,
+      false,
+      trackPaint,
+    );
+
+    // Vẽ phần tiến độ
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - strokeWidth / 2),
+      0.75 * math.pi,
+      1.5 * math.pi * progress.clamp(0.0, 1.0),
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _ModernGaugePainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }
 
 class _SemiCircleGaugePainter extends CustomPainter {

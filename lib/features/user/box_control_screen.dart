@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
@@ -31,6 +32,7 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
   String _mode = 'Auto';
   String _boxName = 'Thiết bị';
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   int? _presetId;
 
@@ -38,6 +40,16 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
   void initState() {
     super.initState();
     _fetchDeviceStatus();
+    // Khởi tạo timer load data mỗi 5s
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchDeviceStatus(showLoading: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   bool _isStatusOn(dynamic value) {
@@ -46,9 +58,11 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
     return s == 'on' || s == '1' || s == 'true' || s == 'active';
   }
 
-  Future<void> _fetchDeviceStatus() async {
+  Future<void> _fetchDeviceStatus({bool showLoading = true}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
     try {
       final List<dynamic> devices = await _deviceService.getMyDevices();
       final dynamic device = devices.firstWhere(
