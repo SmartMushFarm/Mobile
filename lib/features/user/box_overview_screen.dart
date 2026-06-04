@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -27,11 +28,22 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
   final HistoryService _historyService = HistoryService();
   BoxOverviewData? _data;
   bool _isLoading = true;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _fetchBoxData();
+    // Khởi tạo timer load data mỗi 5s
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _fetchBoxData(showLoading: false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
   }
 
   bool _isStatusOn(dynamic value) {
@@ -40,9 +52,11 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
     return s == 'on' || s == '1' || s == 'true' || s == 'active';
   }
 
-  Future<void> _fetchBoxData() async {
+  Future<void> _fetchBoxData({bool showLoading = true}) async {
     if (!mounted) return;
-    setState(() => _isLoading = true);
+    if (showLoading) {
+      setState(() => _isLoading = true);
+    }
     try {
       final List<dynamic> devices = await _deviceService.getMyDevices();
       final dynamic device = devices.firstWhere(

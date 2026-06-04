@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
@@ -32,16 +33,29 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
   String _boxName = 'Thiết bị';
   String _growStatus = 'Đang hoạt động';
   int? _activePresetId;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadData();
+    // Khởi tạo timer load data mỗi 5s
+    _refreshTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+      _loadData(showLoading: false);
+    });
   }
 
-  Future<void> _loadData() async {
+  @override
+  void dispose() {
+    _refreshTimer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _loadData({bool showLoading = true}) async {
     if (!mounted) return;
-    setState(() => _isLoadingPresets = true);
+    if (showLoading) {
+      setState(() => _isLoadingPresets = true);
+    }
     try {
       final presets = await _presetService.getPresets();
       final devices = await _deviceService.getMyDevices();
@@ -64,10 +78,12 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _isLoadingPresets = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
-        );
+        if (showLoading) {
+          setState(() => _isLoadingPresets = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi tải dữ liệu: $e')),
+          );
+        }
       }
     }
   }
