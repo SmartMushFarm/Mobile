@@ -5,6 +5,7 @@ import 'package:smartmush_farmer/features/admin/widgets/admin_device_card.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_device_filter_chip.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_notification_bell.dart';
+import 'package:smartmush_farmer/features/user/services/device_service.dart';
 
 class AdminDeviceScreen extends StatefulWidget {
   const AdminDeviceScreen({super.key});
@@ -14,19 +15,45 @@ class AdminDeviceScreen extends StatefulWidget {
 }
 
 class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
+  final DeviceService _deviceService = DeviceService();
   String _selectedFilter = 'All Devices';
+  List<dynamic> _allDevices = [];
+  bool _isLoading = true;
 
-  List<Map<String, dynamic>> get _filteredDevices {
-    final all = AdminDeviceMonitoringData.devices;
+  @override
+  void initState() {
+    super.initState();
+    _fetchDevices();
+  }
+
+  Future<void> _fetchDevices() async {
+    setState(() => _isLoading = true);
+    try {
+      final devices = await _deviceService.getAllDevices();
+      setState(() {
+        _allDevices = devices;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi tải danh sách thiết bị: $e')),
+        );
+      }
+    }
+  }
+
+  List<dynamic> get _filteredDevices {
     switch (_selectedFilter) {
       case 'Online':
-        return all.where((d) => d['status'] == 'online' || d['status'] == 'warning').toList();
+        return _allDevices.where((d) => d['status'] == 'Online' || d['status'] == 'Active').toList();
       case 'Offline':
-        return all.where((d) => d['status'] == 'offline').toList();
+        return _allDevices.where((d) => d['status'] == 'Offline').toList();
       case 'Warning':
-        return all.where((d) => d['status'] == 'warning').toList();
+        return _allDevices.where((d) => d['status'] == 'Warning').toList();
       default:
-        return all;
+        return _allDevices;
     }
   }
 
@@ -39,20 +66,25 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
           children: [
             _buildHeader(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildStats(),
-                    const SizedBox(height: 16),
-                    _buildFilterChips(),
-                    const SizedBox(height: 16),
-                    _buildDeviceList(),
-                    const SizedBox(height: 16),
-                  ],
-                ),
+              child: RefreshIndicator(
+                onRefresh: _fetchDevices,
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : SingleChildScrollView(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 16),
+                            _buildStats(),
+                            const SizedBox(height: 16),
+                            _buildFilterChips(),
+                            const SizedBox(height: 16),
+                            _buildDeviceList(),
+                            const SizedBox(height: 16),
+                          ],
+                        ),
+                      ),
               ),
             ),
           ],
@@ -154,10 +186,9 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
   }
 
   Widget _buildStats() {
-    final all = AdminDeviceMonitoringData.devices;
-    final online = all.where((d) => d['status'] == 'online' || d['status'] == 'warning').length;
-    final offline = all.where((d) => d['status'] == 'offline').length;
-    final warning = all.where((d) => d['status'] == 'warning').length;
+    final online = _allDevices.where((d) => d['status'] == 'Online' || d['status'] == 'Active').length;
+    final offline = _allDevices.where((d) => d['status'] == 'Offline').length;
+    final warning = _allDevices.where((d) => d['status'] == 'Warning').length;
 
     return Row(
       children: [
@@ -167,7 +198,7 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
         const SizedBox(width: 8),
         Expanded(child: _buildStatChip('Warning', '$warning', AppColors.warning)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatChip('Total', '${all.length}', AppColors.primary)),
+        Expanded(child: _buildStatChip('Total', '${_allDevices.length}', AppColors.primary)),
       ],
     );
   }
@@ -236,22 +267,31 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        if (devices.isEmpty)
+          const Center(child: Padding(
+            padding: EdgeInsets.all(20.0),
+            child: Text('Không có thiết bị nào'),
+          )),
         ...devices.map((d) {
-          final statusStr = d['status'] as String;
-          final status = statusStr == 'offline'
-              ? DeviceStatus.offline
-              : statusStr == 'warning'
-                  ? DeviceStatus.warning
-                  : DeviceStatus.online;
+          final statusStr = d['status']?.toString();
+          final status = (statusStr == 'Online' || statusStr == 'Active')
+              ? DeviceStatus.online
+              : statusStr == 'Offline'
+                  ? DeviceStatus.offline
+                  : statusStr == 'Warning'
+                      ? DeviceStatus.warning
+                      : DeviceStatus.offline;
+          
           return AdminDeviceCard(
-            name: d['name'] as String,
+            deviceId: int.tryParse(d['id'].toString()) ?? 0,
+            name: d['device_name'] ?? d['name'] ?? 'Thiết bị',
             status: status,
-            lastSync: d['lastSync'] as String,
-            alert: d['alert'] as String?,
-            temperature: d['temperature'] as double?,
-            humidity: d['humidity'] as double?,
-            co2: d['co2'] as int?,
-            actions: List<String>.from(d['actions'] as List),
+            lastSync: d['last_sync'] ?? d['updated_at'] ?? 'Vừa xong',
+            alert: d['alert'],
+            temperature: (d['current_temperature'] ?? 0).toDouble(),
+            humidity: (d['current_humidity'] ?? 0).toDouble(),
+            co2: d['co2'] != null ? (d['co2'] as num).toInt() : null,
+            actions: const ['claim_code', 'restart', 'details'],
           );
         }),
       ],

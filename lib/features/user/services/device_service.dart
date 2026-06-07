@@ -16,6 +16,21 @@ class DeviceService {
     }
   }
 
+  Future<List<dynamic>> getAllDevices() async {
+    try {
+      final response = await ApiClient.instance.get('/devices');
+      final data = response.data;
+      if (data is List) {
+        return data;
+      } else if (data is Map && data['data'] is List) {
+        return data['data'];
+      }
+      return [];
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> controlDevice({
     required int deviceId,
     required String device,
@@ -51,6 +66,46 @@ class DeviceService {
   }) async {
     try {
       await ApiClient.instance.put('/devices/$deviceId/apply-preset/$presetId');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // --- New APIs ---
+
+  /// Admin - Generate claim code for a device
+  Future<String> generateClaimCode(int deviceId) async {
+    try {
+      final response = await ApiClient.instance.post('/devices/$deviceId/generate-claim-code');
+      // Assume backend returns the code in response.data['claim_code'] or response.data['data']['claim_code']
+      final data = response.data;
+      if (data is Map) {
+        if (data['claim_code'] != null) return data['claim_code'].toString();
+        if (data['data'] != null && data['data']['claim_code'] != null) {
+          return data['data']['claim_code'].toString();
+        }
+      }
+      return "";
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// User - Claim a device using claim code
+  Future<void> claimDevice(String claimCode) async {
+    try {
+      await ApiClient.instance.post('/devices/claim', data: {
+        'claimCode': claimCode,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Remove device owner (unbind device from account)
+  Future<void> removeOwner(int deviceId) async {
+    try {
+      await ApiClient.instance.put('/devices/$deviceId/remove-owner');
     } catch (e) {
       rethrow;
     }

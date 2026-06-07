@@ -9,10 +9,12 @@ class BoxCard extends StatelessWidget {
     super.key,
     required this.box,
     required this.onTap,
+    this.onRemove,
   });
 
   final MushroomBox box;
   final VoidCallback onTap;
+  final VoidCallback? onRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -49,6 +51,18 @@ class BoxCard extends StatelessWidget {
                     ),
                   ),
                   StatusBadge(isOnline: box.isOnline),
+                  if (onRemove != null)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: GestureDetector(
+                        onTap: (onRemove),
+                        child: const Icon(
+                          Icons.remove_circle_outline,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 16),

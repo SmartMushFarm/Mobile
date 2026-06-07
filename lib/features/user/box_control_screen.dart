@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/box_tab_bar.dart';
 import 'package:smartmush_farmer/core/widgets/device_control_card.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 import 'package:smartmush_farmer/features/user/services/device_service.dart';
 import 'package:smartmush_farmer/features/user/widgets/box_page_header.dart';
 import 'package:smartmush_farmer/features/user/widgets/box_screen_shell.dart';
@@ -64,7 +65,16 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
       setState(() => _isLoading = true);
     }
     try {
-      final List<dynamic> devices = await _deviceService.getMyDevices();
+      final user = await AuthService.getCurrentUser();
+      final role = user?['role']?.toString().toLowerCase();
+
+      List<dynamic> devices;
+      if (role == 'admin') {
+        devices = await _deviceService.getAllDevices();
+      } else {
+        devices = await _deviceService.getMyDevices();
+      }
+
       final dynamic device = devices.firstWhere(
         (d) => d['id'].toString() == widget.boxId,
         orElse: () => null,
@@ -287,8 +297,51 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
             _ManualOverrideNotice(isVisible: _mode == 'Manual'),
             const SizedBox(height: 24),
             _OpenAutomationButton(onTap: () => context.push('/box/automation', extra: widget.boxId)),
+            const SizedBox(height: 32),
+            Center(
+              child: TextButton.icon(
+                onPressed: () => _showRemoveConfirm(),
+                icon: const Icon(Icons.delete_forever, color: Colors.redAccent),
+                label: const Text('Gỡ thiết bị khỏi tài khoản', style: TextStyle(color: Colors.redAccent)),
+              ),
+            ),
+            const SizedBox(height: 48),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showRemoveConfirm() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận gỡ thiết bị'),
+        content: const Text('Bạn có chắc chắn muốn gỡ thiết bị này khỏi tài khoản không? Hành động này không thể hoàn tác.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () async {
+              try {
+                await _deviceService.removeOwner(int.parse(widget.boxId));
+                if (mounted) {
+                  Navigator.pop(context); // Close dialog
+                  context.go('/home'); // Back to home
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã gỡ thiết bị thành công')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            child: const Text('Gỡ thiết bị', style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }

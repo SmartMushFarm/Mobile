@@ -178,6 +178,7 @@ class AdminDashboardScreen extends StatelessWidget {
           return Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: AdminDeviceCard(
+                deviceId: int.tryParse(d['id'].toString()) ?? 0,
                 name: d['name'] as String,
                 status: status,
                 lastSync: d['lastSync'] as String? ?? 'Unknown',

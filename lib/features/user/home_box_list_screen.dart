@@ -88,10 +88,97 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
   }
 
   void _onAddDevice() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Chức năng thêm thiết bị sắp ra mắt'),
-        behavior: SnackBarBehavior.floating,
+    final TextEditingController codeController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Thêm thiết bị mới'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Nhập mã Claim Code được cung cấp để kết nối với thiết bị.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: codeController,
+              decoration: const InputDecoration(
+                labelText: 'Mã Claim Code',
+                hintText: 'VD: ABC-123',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final code = codeController.text.trim();
+              if (code.isEmpty) return;
+              
+              try {
+                await _deviceService.claimDevice(code);
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Kết nối thiết bị thành công!')),
+                  );
+                  _fetchDevices(); // Refresh list
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            child: const Text('Kết nối'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _onRemoveDevice(MushroomBox box) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận gỡ thiết bị'),
+        content: Text('Bạn có chắc chắn muốn gỡ thiết bị "${box.name}" khỏi tài khoản không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await _deviceService.removeOwner(int.parse(box.id));
+                if (mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Đã gỡ thiết bị thành công')),
+                  );
+                  _fetchDevices();
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Gỡ thiết bị'),
+          ),
+        ],
       ),
     );
   }
@@ -165,6 +252,7 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
                                   '/box/overview',
                                   extra: box.id,
                                 ),
+                                onRemove: () => _onRemoveDevice(box),
                               );
                             },
                           ),
