@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/box_tab_bar.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 import 'package:smartmush_farmer/features/user/models/box_overview_data.dart';
 import 'package:smartmush_farmer/features/user/services/device_service.dart';
 import 'package:smartmush_farmer/features/user/services/history_service.dart';
@@ -58,7 +59,16 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
       setState(() => _isLoading = true);
     }
     try {
-      final List<dynamic> devices = await _deviceService.getMyDevices();
+      final user = await AuthService.getCurrentUser();
+      final role = user?['role']?.toString().toLowerCase();
+      
+      List<dynamic> devices;
+      if (role == 'admin') {
+        devices = await _deviceService.getAllDevices();
+      } else {
+        devices = await _deviceService.getMyDevices();
+      }
+
       final dynamic device = devices.firstWhere(
         (d) => d['id'].toString() == widget.boxId,
         orElse: () => null,

@@ -1,6 +1,7 @@
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_dashboard_screen.dart';
 import 'package:smartmush_farmer/features/admin/admin_device_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_device_detail_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_orders_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_users_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_products_screen.dart';
@@ -11,6 +12,7 @@ import 'package:smartmush_farmer/features/alerts/alerts_screen.dart';
 import 'package:smartmush_farmer/features/auth/login_screen.dart';
 import 'package:smartmush_farmer/features/auth/register_screen.dart';
 import 'package:smartmush_farmer/features/auth/splash_screen.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 import 'package:smartmush_farmer/features/shop/cart_screen.dart';
 import 'package:smartmush_farmer/features/shop/checkout_screen.dart';
 import 'package:smartmush_farmer/features/shop/order_history_screen.dart';
@@ -31,6 +33,43 @@ import 'package:smartmush_farmer/features/user/profile_screen.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  redirect: (context, state) async {
+    final bool loggedIn = await AuthService.isLoggedIn();
+    final String location = state.uri.toString();
+    
+    // Các đường dẫn công khai
+    final bool isPublicPath = location == '/' || location == '/login' || location == '/register';
+
+    if (!loggedIn) {
+      // Nếu chưa đăng nhập và cố vào trang bảo mật -> Về Login
+      return isPublicPath ? null : '/login';
+    }
+
+    // Nếu đã đăng nhập
+    final user = await AuthService.getCurrentUser();
+    final String role = (user?['role'] ?? '').toString().toLowerCase();
+
+    // Logic chặn Admin vào trang User
+    if (role == 'admin') {
+      // Nếu Admin đang ở đường dẫn công khai (Splash/Login) thì đẩy vào /admin
+      if (isPublicPath && location != '/') return '/admin';
+      
+      // Nếu Admin cố vào trang không bắt đầu bằng /admin -> Đẩy về /admin
+      if (!location.startsWith('/admin')) {
+        return '/admin';
+      }
+    } 
+    
+    // Logic chặn User vào trang Admin
+    else {
+      // Nếu User (không phải admin) cố vào trang /admin -> Đẩy về /home
+      if (location.startsWith('/admin')) {
+        return '/home';
+      }
+    }
+
+    return null;
+  },
   routes: [
     GoRoute(
       path: '/',
@@ -141,6 +180,13 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/devices',
       builder: (context, state) => const AdminDeviceScreen(),
+    ),
+    GoRoute(
+      path: '/admin/device-detail',
+      builder: (context, state) {
+        final deviceId = state.extra as String? ?? '';
+        return AdminDeviceDetailScreen(deviceId: deviceId);
+      },
     ),
     GoRoute(
       path: '/admin/users',

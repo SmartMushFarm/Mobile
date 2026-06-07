@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/auth/widgets/login_form_card.dart';
@@ -50,7 +51,8 @@ class _LoginScreenState extends State<LoginScreen> {
       );
 
       final user = await AuthService.getCurrentUser();
-      final role = user?['role'] as String?;
+      final role = user?['role']?.toString().toLowerCase();
+
       if (role == 'admin') {
         context.go('/admin');
       } else {
@@ -61,8 +63,15 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _isLoading = false);
       
       String message = 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
-      if (e is Exception) {
-        message = e.toString().replaceAll('Exception: ', '');
+      
+      if (e is DioException) {
+        if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
+          message = 'Email hoặc mật khẩu không chính xác.';
+        } else if (e.response?.data != null && e.response?.data is Map) {
+          message = e.response?.data['message'] ?? message;
+        } else if (e.type == DioExceptionType.connectionTimeout) {
+          message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra internet.';
+        }
       }
       
       ScaffoldMessenger.of(context).showSnackBar(

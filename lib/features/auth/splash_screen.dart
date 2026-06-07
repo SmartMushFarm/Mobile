@@ -38,7 +38,14 @@ class _SplashScreenState extends State<SplashScreen>
 
     final loggedIn = await AuthService.isLoggedIn();
     if (loggedIn) {
-      context.go('/home');
+      final user = await AuthService.getCurrentUser();
+      final role = user?['role']?.toString().toLowerCase();
+      
+      if (role == 'admin') {
+        context.go('/admin');
+      } else {
+        context.go('/home');
+      }
     } else {
       context.go('/login');
     }

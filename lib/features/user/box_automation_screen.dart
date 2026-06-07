@@ -57,8 +57,18 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
       setState(() => _isLoadingPresets = true);
     }
     try {
+      final user = await AuthService.getCurrentUser();
+      final role = user?['role']?.toString().toLowerCase();
+
       final presets = await _presetService.getPresets();
-      final devices = await _deviceService.getMyDevices();
+      
+      List<dynamic> devices;
+      if (role == 'admin') {
+        devices = await _deviceService.getAllDevices();
+      } else {
+        devices = await _deviceService.getMyDevices();
+      }
+
       final device = devices.firstWhere((d) => d['id'].toString() == widget.boxId, orElse: () => null);
 
       if (mounted) {

@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
+import 'package:dio/dio.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_metric_tile.dart';
+import 'package:smartmush_farmer/features/user/services/device_service.dart';
 
 enum DeviceStatus { online, offline, warning }
 
 class AdminDeviceCard extends StatelessWidget {
+  final int deviceId;
   final String name;
   final DeviceStatus status;
   final String lastSync;
@@ -16,6 +21,7 @@ class AdminDeviceCard extends StatelessWidget {
 
   const AdminDeviceCard({
     super.key,
+    required this.deviceId,
     required this.name,
     required this.status,
     required this.lastSync,
@@ -55,8 +61,69 @@ class AdminDeviceCard extends StatelessWidget {
     );
   }
 
-  void _handleAction(BuildContext context, String action) {
+  void _handleAction(BuildContext context, String action) async {
+    final deviceService = DeviceService();
     switch (action) {
+      case 'claim_code':
+        try {
+          final code = await deviceService.generateClaimCode(deviceId);
+          if (context.mounted) {
+            showDialog(
+              context: context,
+              builder: (context) => AlertDialog(
+                title: const Text('Mã Claim Code'),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('Hãy gửi mã này cho người dùng để họ kết nối thiết bị:'),
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.primary),
+                      ),
+                      child: SelectableText(
+                        code,
+                        style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                          letterSpacing: 2,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ],
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(text: code));
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Đã sao chép mã vào bộ nhớ tạm')),
+                      );
+                    },
+                    child: const Text('Sao chép & Đóng'),
+                  ),
+                ],
+              ),
+            );
+          }
+        } catch (e) {
+          String msg = 'Lỗi tạo mã: $e';
+          if (e is DioException && e.response?.data != null) {
+            msg = e.response?.data['message'] ?? msg;
+          }
+          if (context.mounted) _showSnackBar(context, msg);
+        }
+        break;
+      case 'details':
+        // Điều hướng sang trang chi tiết dành riêng cho Admin
+        context.push('/admin/device-detail', extra: deviceId.toString());
+        break;
       case 'restart':
         _showSnackBar(context, 'Restarting $name...');
         break;
