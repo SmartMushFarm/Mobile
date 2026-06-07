@@ -49,7 +49,13 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       );
 
-      context.go('/home');
+      final user = await AuthService.getCurrentUser();
+      final role = user?['role'] as String?;
+      if (role == 'admin') {
+        context.go('/admin');
+      } else {
+        context.go('/home');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);

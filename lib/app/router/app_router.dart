@@ -1,4 +1,12 @@
 import 'package:go_router/go_router.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_dashboard_screen.dart';
+import 'package:smartmush_farmer/features/admin/admin_device_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_orders_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_users_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_products_screen.dart';
+import 'package:smartmush_farmer/features/admin/admin_maintenance_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_alerts_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_tickets_screen.dart';
 import 'package:smartmush_farmer/features/alerts/alerts_screen.dart';
 import 'package:smartmush_farmer/features/auth/login_screen.dart';
 import 'package:smartmush_farmer/features/auth/register_screen.dart';
@@ -125,6 +133,42 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/maintenance/create',
       builder: (context, state) => const CreateMaintenanceRequestScreen(),
+    ),
+    GoRoute(
+      path: '/admin',
+      builder: (context, state) => const AdminDashboardScreen(),
+    ),
+    GoRoute(
+      path: '/admin/devices',
+      builder: (context, state) => const AdminDeviceScreen(),
+    ),
+    GoRoute(
+      path: '/admin/users',
+      builder: (context, state) => const AdminUsersScreen(),
+    ),
+    GoRoute(
+      path: '/admin/profile',
+      builder: (context, state) => const AdminUsersScreen(),
+    ),
+    GoRoute(
+      path: '/admin/orders',
+      builder: (context, state) => const AdminOrdersScreen(),
+    ),
+    GoRoute(
+      path: '/admin/products',
+      builder: (context, state) => const AdminProductsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/maintenance',
+      builder: (context, state) => const AdminMaintenanceScreen(),
+    ),
+    GoRoute(
+      path: '/admin/alerts',
+      builder: (context, state) => const AdminAlertsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/tickets',
+      builder: (context, state) => const AdminTicketsScreen(),
     ),
   ],
 );
