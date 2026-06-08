@@ -16,7 +16,7 @@ final mockBoxOverviewById = <String, BoxOverviewData>{
       co2LevelProgress: 0.4,
       substrateMoisturePercent: 62,
     ),
-    devices: BoxDeviceState(ledOn: true, fanOn: true, mistOn: false),
+    devices: BoxDeviceState(ledOn: true, fanOn: true, mistOn: false, heaterOn: false),
     temperatureTrend: _defaultTrend,
     humidityTrend: _humidityTrend,
     activityLogs: [
@@ -46,7 +46,7 @@ final mockBoxOverviewById = <String, BoxOverviewData>{
       co2LevelProgress: 0.35,
       substrateMoisturePercent: 58,
     ),
-    devices: BoxDeviceState(ledOn: false, fanOn: true, mistOn: true),
+    devices: BoxDeviceState(ledOn: false, fanOn: true, mistOn: true, heaterOn: false),
     temperatureTrend: [20.0, 20.5, 21.0, 21.0, 20.8, 21.0, 21.0],
     humidityTrend: [88.0, 89.0, 90.0, 89.0, 90.0, 90.0, 90.0],
     activityLogs: [

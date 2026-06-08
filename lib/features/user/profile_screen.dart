@@ -4,11 +4,45 @@ import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
 import 'package:smartmush_farmer/features/user/widgets/profile_menu_item.dart';
 
-class ProfileScreen extends StatelessWidget {
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+
+class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
-  static const _avatarUrl =
-      'https://www.figma.com/api/mcp/asset/e3f455fa-3d3c-477f-9403-67e769798b24';
+  @override
+  State<ProfileScreen> createState() => _ProfileScreenState();
+}
+
+class _ProfileScreenState extends State<ProfileScreen> {
+  UserModel? _user;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfile();
+  }
+
+  Future<void> _loadProfile() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final user = await AuthService.fetchMe();
+      setState(() {
+        _user = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Không thể tải thông tin hồ sơ. Vui lòng thử lại.';
+      });
+    }
+  }
 
   void _logout(BuildContext context) {
     showDialog(
@@ -22,9 +56,12 @@ class ProfileScreen extends StatelessWidget {
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.go('/login');
+            onPressed: () async {
+              await AuthService.logout();
+              if (mounted) {
+                Navigator.pop(ctx);
+                context.go('/login');
+              }
             },
             child: Text(
               'Đăng xuất',
@@ -54,31 +91,50 @@ class ProfileScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 16),
-                    _buildAvatar(),
-                    const SizedBox(height: 16),
-                    _buildUserInfo(),
-                    const SizedBox(height: 24),
-                    _buildFarmOperationsSection(context),
-                    const SizedBox(height: 24),
-                    _buildAccountSection(context),
-                    const SizedBox(height: 32),
-                    _buildLogoutButton(context),
-                    const SizedBox(height: 24),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(_error!, style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: _loadProfile,
+                          child: const Text('Thử lại'),
+                        ),
+                      ],
+                    ),
+                  )
+                : Column(
+                    children: [
+                      _buildHeader(),
+                      Expanded(
+                        child: RefreshIndicator(
+                          onRefresh: _loadProfile,
+                          child: SingleChildScrollView(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              children: [
+                                const SizedBox(height: 16),
+                                _buildAvatar(),
+                                const SizedBox(height: 16),
+                                _buildUserInfo(),
+                                const SizedBox(height: 24),
+                                _buildFarmOperationsSection(context),
+                                const SizedBox(height: 24),
+                                _buildAccountSection(context),
+                                const SizedBox(height: 32),
+                                _buildLogoutButton(context),
+                                const SizedBox(height: 24),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
       ),
       bottomNavigationBar: UserBottomNav(
         currentItem: UserNavItem.profile,
@@ -114,58 +170,39 @@ class ProfileScreen extends StatelessWidget {
   }
 
   Widget _buildAvatar() {
-    return Stack(
-      children: [
-        Container(
-          width: 112,
-          height: 112,
-          decoration: BoxDecoration(
-            color: AppColors.profileAvatarBorder,
-            shape: BoxShape.circle,
-            border: Border.all(
-              color: AppColors.loginBackground,
-              width: 4,
-            ),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x264CAF50),
-                blurRadius: 12,
-                offset: Offset(0, 4),
-              ),
-            ],
+    String initials = "A";
+    if (_user?.name != null && _user!.name!.isNotEmpty) {
+      initials = _user!.name![0].toUpperCase();
+    }
+
+    return Container(
+      width: 112,
+      height: 112,
+      decoration: BoxDecoration(
+        color: AppColors.profileAvatarBorder,
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: AppColors.loginBackground,
+          width: 4,
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x264CAF50),
+            blurRadius: 12,
+            offset: Offset(0, 4),
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Image.network(
-            _avatarUrl,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => const Icon(
-              Icons.person,
-              size: 56,
-              color: AppColors.shopTextSecondary,
-            ),
+        ],
+      ),
+      child: Center(
+        child: Text(
+          initials,
+          style: TextStyle(
+            fontSize: 40,
+            fontWeight: FontWeight.bold,
+            color: AppColors.shopPrice,
           ),
         ),
-        Positioned(
-          right: 0,
-          bottom: 0,
-          child: Container(
-            padding: const EdgeInsets.all(6),
-            decoration: BoxDecoration(
-              color: AppColors.shopPrice,
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: AppColors.loginBackground,
-                width: 2,
-              ),
-            ),
-            child: const Icon(
-              Icons.camera_alt,
-              size: 14,
-              color: Colors.white,
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -173,7 +210,7 @@ class ProfileScreen extends StatelessWidget {
     return Column(
       children: [
         Text(
-          'Farmer Joe',
+          _user?.name ?? 'Chưa cập nhật',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w700,
@@ -182,7 +219,7 @@ class ProfileScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Người trồng nấm',
+          _user?.role == 'admin' ? 'Quản trị viên' : 'Người trồng nấm',
           style: TextStyle(
             fontSize: 14,
             fontWeight: FontWeight.w400,
@@ -231,12 +268,6 @@ class ProfileScreen extends StatelessWidget {
     return _buildSectionCard(
       children: [
         _buildSectionHeader('Hoạt động nông trại'),
-        ProfileMenuItem(
-          icon: Icons.developer_board_outlined,
-          label: 'Thiết bị của tôi',
-          onTap: () => context.push('/profile/devices'),
-        ),
-        const Divider(color: AppColors.orderCardBorder, height: 1),
         ProfileMenuItem(
           icon: Icons.build_outlined,
           label: 'Bảo trì',

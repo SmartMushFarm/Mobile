@@ -8,6 +8,8 @@ import 'package:smartmush_farmer/features/admin/widgets/admin_alert_stats_card.d
 import 'package:smartmush_farmer/features/admin/widgets/admin_notification_bell.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_severity_badge.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 
 class AdminAlertsScreen extends StatefulWidget {
   const AdminAlertsScreen({super.key});
@@ -18,6 +20,27 @@ class AdminAlertsScreen extends StatefulWidget {
 
 class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
   String _selectedFilter = 'All';
+  UserModel? _admin;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await AuthService.fetchMe();
+      setState(() {
+        _admin = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   List<Map<String, dynamic>> get _filteredAlerts {
     final all = AdminAlertsData.alerts;
@@ -124,6 +147,11 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
   }
 
   Widget _buildHeader() {
+    String initials = "A";
+    if (_admin?.name != null && _admin!.name!.isNotEmpty) {
+      initials = _admin!.name![0].toUpperCase();
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: const BoxDecoration(
@@ -157,8 +185,38 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
           ),
           AdminNotificationBell(badgeCount: _unresolvedCount),
           const SizedBox(width: 8),
+          IconButton(
+            icon: const Icon(Icons.logout, color: AppColors.textPrimary),
+            onPressed: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Đăng xuất'),
+                  content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Hủy'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                await AuthService.logout();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 8),
           GestureDetector(
-            onTap: () {},
+            onTap: () => context.go('/admin/profile'),
             child: Container(
               width: 40,
               height: 40,
@@ -166,10 +224,10 @@ class _AdminAlertsScreenState extends State<AdminAlertsScreen> {
                 color: AppColors.primary.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
-              child: const Center(
+              child: Center(
                 child: Text(
-                  'A',
-                  style: TextStyle(
+                  initials,
+                  style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                     color: AppColors.primary,

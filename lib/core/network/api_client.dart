@@ -12,32 +12,31 @@ class ApiClient {
     ),
   );
 
+  static bool _interceptorAdded = false;
+
   static Dio get instance {
-    _dio.interceptors.clear();
-    _dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) async {
-          final token = await AuthStorage.getToken();
-          if (token != null) {
-            options.headers['Authorization'] = 'Bearer $token';
-          }
-          print('REQUEST[${options.method}] => PATH: ${options.path}');
-          print('HEADERS: ${options.headers}');
-          print('DATA: ${options.data}');
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          print('RESPONSE[${response.statusCode}] => PATH: ${response.requestOptions.path}');
-          print('DATA: ${response.data}');
-          return handler.next(response);
-        },
-        onError: (DioException e, handler) {
-          print('ERROR[${e.response?.statusCode}] => PATH: ${e.requestOptions.path}');
-          print('MESSAGE: ${e.message}');
-          return handler.next(e);
-        },
-      ),
-    );
+    _dio.options.baseUrl = ApiConfig.baseUrl;
+    
+    if (!_interceptorAdded) {
+      _dio.interceptors.add(
+        InterceptorsWrapper(
+          onRequest: (options, handler) async {
+            final token = await AuthStorage.getToken();
+            if (token != null && token.isNotEmpty) {
+              options.headers['Authorization'] = 'Bearer $token';
+            }
+            return handler.next(options);
+          },
+          onError: (DioException e, handler) {
+            if (e.response?.statusCode == 401) {
+              // Handle unauthorized
+            }
+            return handler.next(e);
+          },
+        ),
+      );
+      _interceptorAdded = true;
+    }
     return _dio;
   }
 }

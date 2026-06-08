@@ -5,19 +5,24 @@ import 'package:smartmush_farmer/features/admin/screens/admin_device_detail_scre
 import 'package:smartmush_farmer/features/admin/screens/admin_orders_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_users_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_products_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_categories_screen.dart';
 import 'package:smartmush_farmer/features/admin/admin_maintenance_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_alerts_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_tickets_screen.dart';
+import 'package:smartmush_farmer/features/admin/screens/admin_profile_screen.dart';
 import 'package:smartmush_farmer/features/alerts/alerts_screen.dart';
 import 'package:smartmush_farmer/features/auth/login_screen.dart';
 import 'package:smartmush_farmer/features/auth/register_screen.dart';
 import 'package:smartmush_farmer/features/auth/splash_screen.dart';
 import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
 import 'package:smartmush_farmer/features/shop/cart_screen.dart';
 import 'package:smartmush_farmer/features/shop/checkout_screen.dart';
 import 'package:smartmush_farmer/features/shop/order_history_screen.dart';
 import 'package:smartmush_farmer/features/shop/product_detail_screen.dart';
 import 'package:smartmush_farmer/features/shop/shop_screen.dart';
+import 'package:smartmush_farmer/features/shop/payment_screen.dart';
+import 'package:smartmush_farmer/features/shop/order_detail_screen.dart';
 import 'package:smartmush_farmer/features/user/add_automation_rule_screen.dart';
 import 'package:smartmush_farmer/features/user/box_automation_screen.dart';
 import 'package:smartmush_farmer/features/user/box_control_screen.dart';
@@ -37,35 +42,29 @@ final GoRouter appRouter = GoRouter(
     final bool loggedIn = await AuthService.isLoggedIn();
     final String location = state.uri.toString();
     
-    // Các đường dẫn công khai
     final bool isPublicPath = location == '/' || location == '/login' || location == '/register';
 
     if (!loggedIn) {
-      // Nếu chưa đăng nhập và cố vào trang bảo mật -> Về Login
       return isPublicPath ? null : '/login';
     }
 
     // Nếu đã đăng nhập
-    final user = await AuthService.getCurrentUser();
-    final String role = (user?['role'] ?? '').toString().toLowerCase();
-
-    // Logic chặn Admin vào trang User
-    if (role == 'admin') {
-      // Nếu Admin đang ở đường dẫn công khai (Splash/Login) thì đẩy vào /admin
-      if (isPublicPath && location != '/') return '/admin';
-      
-      // Nếu Admin cố vào trang không bắt đầu bằng /admin -> Đẩy về /admin
-      if (!location.startsWith('/admin')) {
-        return '/admin';
-      }
-    } 
+    final userMap = await AuthService.getCurrentUser();
     
-    // Logic chặn User vào trang Admin
-    else {
-      // Nếu User (không phải admin) cố vào trang /admin -> Đẩy về /home
-      if (location.startsWith('/admin')) {
-        return '/home';
-      }
+    // Nếu token tồn tại nhưng thông tin user lồng chưa có, cho phép truy cập
+    if (userMap == null) return null;
+
+    final user = UserModel.fromJson(userMap);
+    final String role = (user.role ?? '').toLowerCase();
+
+    // Logic chặn User vào trang Admin: Chỉ chặn nếu chắc chắn là role thấp
+    if (location.startsWith('/admin') && (role == 'user' || role == 'customer' || role == 'member' || role == 'farmer')) {
+      return '/home';
+    }
+
+    // Nếu Admin đang ở các trang công khai -> Chuyển về Dashboard
+    if (role == 'admin' && isPublicPath && location != '/') {
+      return '/admin';
     }
 
     return null;
@@ -142,7 +141,7 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/shop/product-detail',
       builder: (context, state) {
-        final productId = state.extra as String? ?? '';
+        final productId = state.extra as int? ?? 0;
         return ProductDetailScreen(productId: productId);
       },
     ),
@@ -162,6 +161,24 @@ final GoRouter appRouter = GoRouter(
       builder: (context, state) => const OrderHistoryScreen(),
     ),
     GoRoute(
+      path: '/shop/order-detail',
+      builder: (context, state) {
+        final orderId = state.extra as int? ?? 0;
+        return OrderDetailScreen(orderId: orderId);
+      },
+    ),
+    GoRoute(
+      path: '/shop/payment',
+      builder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return PaymentScreen(
+          orderId: extra['orderId'] as int? ?? 0,
+          amount: extra['amount'] as double? ?? 0.0,
+          paymentMethod: extra['paymentMethod'] as String? ?? 'QR',
+        );
+      },
+    ),
+    GoRoute(
       path: '/alerts',
       builder: (context, state) => const AlertsScreen(),
     ),
@@ -173,6 +190,7 @@ final GoRouter appRouter = GoRouter(
       path: '/maintenance/create',
       builder: (context, state) => const CreateMaintenanceRequestScreen(),
     ),
+    // Admin Routes
     GoRoute(
       path: '/admin',
       builder: (context, state) => const AdminDashboardScreen(),
@@ -194,7 +212,11 @@ final GoRouter appRouter = GoRouter(
     ),
     GoRoute(
       path: '/admin/profile',
-      builder: (context, state) => const AdminUsersScreen(),
+      builder: (context, state) => const AdminProfileScreen(),
+    ),
+    GoRoute(
+      path: '/admin/profile/settings',
+      builder: (context, state) => const AccountSettingsScreen(),
     ),
     GoRoute(
       path: '/admin/orders',
@@ -203,6 +225,10 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/products',
       builder: (context, state) => const AdminProductsScreen(),
+    ),
+    GoRoute(
+      path: '/admin/categories',
+      builder: (context, state) => const AdminCategoriesScreen(),
     ),
     GoRoute(
       path: '/admin/maintenance',

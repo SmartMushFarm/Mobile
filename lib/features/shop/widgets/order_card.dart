@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
-import 'package:smartmush_farmer/features/shop/models/order_item.dart';
-import 'package:smartmush_farmer/features/shop/widgets/order_status_badge.dart';
+import 'package:smartmush_farmer/features/shop/models/order_model.dart';
+import 'package:intl/intl.dart';
 
 class OrderCard extends StatelessWidget {
   const OrderCard({
@@ -10,11 +10,14 @@ class OrderCard extends StatelessWidget {
     required this.onTap,
   });
 
-  final OrderItem order;
+  final OrderModel order;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    final dateFormat = DateFormat('dd/MM/yyyy');
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -40,10 +43,10 @@ class OrderCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
-                  'Mã đơn: ${order.orderCode}',
+                  'Mã đơn: #${order.id}',
                   style: AppTextStyles.orderCardId,
                 ),
-                OrderStatusBadge(status: order.status),
+                _buildStatusBadge(order.status),
               ],
             ),
             const SizedBox(height: 10),
@@ -57,19 +60,20 @@ class OrderCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 4),
                 Text(
-                  'Ngày đặt: ${order.date}',
+                  'Ngày đặt: ${dateFormat.format(order.createdAt ?? DateTime.now())}',
                   style: AppTextStyles.orderCardDate,
                 ),
               ],
             ),
             const SizedBox(height: 8),
-            // Products
-            Text(
-              order.products,
-              style: AppTextStyles.orderCardProducts,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            ),
+            // Products summary
+            if (order.details != null && order.details!.isNotEmpty)
+              Text(
+                order.details!.map((d) => '${d.productName} x${d.quantity}').join(', '),
+                style: AppTextStyles.orderCardProducts,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
             const SizedBox(height: 12),
             // Footer: total + arrow
             Row(
@@ -84,7 +88,7 @@ class OrderCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      order.total,
+                      currencyFormat.format(order.totalAmount),
                       style: AppTextStyles.orderCardTotal,
                     ),
                   ],
@@ -98,6 +102,32 @@ class OrderCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildStatusBadge(String status) {
+    Color color;
+    String label = status;
+    switch (status.toLowerCase()) {
+      case 'pending': color = Colors.orange; break;
+      case 'confirmed': color = Colors.blue; break;
+      case 'shipping': color = Colors.purple; break;
+      case 'completed':
+      case 'delivered': color = Colors.green; break;
+      case 'cancelled': color = Colors.red; break;
+      default: color = Colors.grey;
+    }
+    
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }

@@ -127,6 +127,15 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
       return;
     }
 
+    // Optimistic UI update
+    setState(() {
+      if (key == 'all') {
+        _deviceStates.updateAll((k, v) => false);
+      } else {
+        _deviceStates[key] = value;
+      }
+    });
+
     final String action = value ? 'on' : 'off';
     try {
       await _deviceService.controlDevice(
@@ -134,17 +143,11 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
         device: key,
         action: action,
       );
-      setState(() {
-        if (key == 'all') {
-          _deviceStates.updateAll((k, v) => false);
-        } else {
-          _deviceStates[key] = value;
-        }
-      });
+      // No setState here because we already did it optimistically below
 
-      // Đợi 1 chút để DB cập nhật rồi tải lại trạng thái thật
+      // Đợi 1 chút để DB cập nhật rồi tải lại trạng thái thật (Silent refresh)
       Future.delayed(const Duration(milliseconds: 500), () {
-        _fetchDeviceStatus();
+        _fetchDeviceStatus(showLoading: false);
       });
 
       if (mounted) {
@@ -154,6 +157,14 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
       }
     } catch (e) {
       if (mounted) {
+        // Rollback on error
+        setState(() {
+          if (key == 'all') {
+            _fetchDeviceStatus(showLoading: false);
+          } else {
+            _deviceStates[key] = !value;
+          }
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Lỗi: $e')),
         );
@@ -162,6 +173,7 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
   }
 
   Future<void> _toggleMode() async {
+    final oldMode = _mode;
     final newMode = _mode == 'Auto' ? 'Manual' : 'Auto';
 
     if (newMode == 'Auto' && _presetId == null) {
@@ -176,34 +188,39 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
       return;
     }
 
+    // Optimistic UI update
+    setState(() {
+      _mode = newMode;
+      if (newMode == 'Manual') {
+        _presetId = null;
+      }
+    });
+
     try {
       await _deviceService.updateMode(
         deviceId: int.parse(widget.boxId),
         mode: newMode,
       );
-      setState(() {
-        _mode = newMode;
-        if (newMode == 'Manual') {
-          _presetId = null; // Backend tự động gán null khi sang Manual
-        }
-      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Đã chuyển sang chế độ $newMode')),
         );
+        // Silent refresh
+        _fetchDeviceStatus(showLoading: false);
       }
     } catch (e) {
-      String errorMessage = e.toString();
-      if (e is DioException && e.response != null && e.response?.data != null) {
-        final data = e.response?.data;
-        if (data is Map && data.containsKey('message')) {
-          errorMessage = data['message'];
-        } else {
-          errorMessage = data.toString();
-        }
-      }
-
       if (mounted) {
+        setState(() => _mode = oldMode); // Rollback
+        String errorMessage = e.toString();
+        if (e is DioException && e.response != null && e.response?.data != null) {
+          final data = e.response?.data;
+          if (data is Map && data.containsKey('message')) {
+            errorMessage = data['message'];
+          } else {
+            errorMessage = data.toString();
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi: $errorMessage'),

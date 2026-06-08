@@ -99,6 +99,15 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
   }
 
   Future<void> _applyPreset(int presetId) async {
+    final oldActivePresetId = _activePresetId;
+    final oldGrowStatus = _growStatus;
+
+    // Optimistic UI update
+    setState(() {
+      _activePresetId = presetId;
+      _growStatus = 'Chế độ: Auto'; // Applying preset usually forces Auto mode
+    });
+
     try {
       await _deviceService.applyPreset(
         deviceId: int.parse(widget.boxId),
@@ -111,20 +120,27 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
             backgroundColor: AppColors.primary,
           ),
         );
-        _loadData(); // Reload to see changes
+        // Silent refresh to sync data
+        _loadData(showLoading: false);
       }
     } catch (e) {
-      String errorMessage = e.toString();
-      if (e is DioException && e.response != null && e.response?.data != null) {
-        final data = e.response?.data;
-        if (data is Map && data.containsKey('message')) {
-          errorMessage = data['message'];
-        } else {
-          errorMessage = data.toString();
-        }
-      }
-
       if (mounted) {
+        // Rollback
+        setState(() {
+          _activePresetId = oldActivePresetId;
+          _growStatus = oldGrowStatus;
+        });
+
+        String errorMessage = e.toString();
+        if (e is DioException && e.response != null && e.response?.data != null) {
+          final data = e.response?.data;
+          if (data is Map && data.containsKey('message')) {
+            errorMessage = data['message'];
+          } else {
+            errorMessage = data.toString();
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Lỗi áp dụng preset: $errorMessage'),

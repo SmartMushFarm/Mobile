@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/admin/data/admin_device_monitoring_data.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_device_card.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_device_filter_chip.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_notification_bell.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
 import 'package:smartmush_farmer/features/user/services/device_service.dart';
 
 class AdminDeviceScreen extends StatefulWidget {
@@ -158,6 +160,36 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
           ),
           const SizedBox(width: 8),
           AdminNotificationBell(badgeCount: 3),
+          const SizedBox(width: 8),
+          _HeaderIconButton(
+            icon: Icons.logout,
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Đăng xuất'),
+                  content: const Text('Bạn có chắc chắn muốn đăng xuất không?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Hủy'),
+                    ),
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      child: const Text('Đăng xuất', style: TextStyle(color: Colors.red)),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true) {
+                await AuthService.logout();
+                if (context.mounted) {
+                  context.go('/login');
+                }
+              }
+            },
+          ),
           const SizedBox(width: 8),
           GestureDetector(
             onTap: () {},

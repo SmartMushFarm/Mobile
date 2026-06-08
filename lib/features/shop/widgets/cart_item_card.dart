@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
-import 'package:smartmush_farmer/features/shop/models/cart_item.dart';
+import 'package:smartmush_farmer/features/shop/models/cart_model.dart';
+import 'package:intl/intl.dart';
 
 class CartItemCard extends StatelessWidget {
   const CartItemCard({
@@ -10,12 +11,14 @@ class CartItemCard extends StatelessWidget {
     required this.onRemove,
   });
 
-  final CartItem item;
+  final CartItemModel item;
   final ValueChanged<int> onQuantityChanged;
   final VoidCallback onRemove;
 
   @override
   Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -43,11 +46,13 @@ class CartItemCard extends StatelessWidget {
                 borderRadius: BorderRadius.circular(8),
               ),
               clipBehavior: Clip.antiAlias,
-              child: Image.network(
-                item.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: _imgError,
-              ),
+              child: item.productImageUrl != null
+                  ? Image.network(
+                      item.productImageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: _imgError,
+                    )
+                  : _imgError(context, null, null),
             ),
             const SizedBox(width: 16),
             // Product details
@@ -61,7 +66,7 @@ class CartItemCard extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          item.name,
+                          item.productName ?? 'Sản phẩm',
                           style: AppTextStyles.cartItemTitle,
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -81,20 +86,12 @@ class CartItemCard extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 4),
-                  // Description
-                  Text(
-                    item.description,
-                    style: AppTextStyles.cartItemDesc,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 8),
                   // Price + quantity stepper
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        item.price,
+                        currencyFormat.format(item.price),
                         style: AppTextStyles.cartItemPrice,
                       ),
                       const Spacer(),
@@ -103,6 +100,11 @@ class CartItemCard extends StatelessWidget {
                         onChanged: onQuantityChanged,
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Tổng: ${currencyFormat.format(item.price * item.quantity)}',
+                    style: AppTextStyles.cartItemDesc,
                   ),
                 ],
               ),
@@ -203,7 +205,7 @@ class _StepperBtn extends StatelessWidget {
           size: 12,
           color: isEnabled
               ? AppColors.shopTextPrimary
-              : AppColors.shopTextSecondary.withValues(alpha: 0.4),
+              : AppColors.shopTextSecondary.withOpacity(0.4),
         ),
       ),
     );

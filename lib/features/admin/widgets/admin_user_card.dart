@@ -11,6 +11,8 @@ class AdminUserCard extends StatelessWidget {
   final String lastActive;
   final UserStatus status;
   final List<String> actions;
+  final VoidCallback? onStatusToggle;
+  final VoidCallback? onEdit;
 
   const AdminUserCard({
     super.key,
@@ -21,6 +23,8 @@ class AdminUserCard extends StatelessWidget {
     required this.lastActive,
     required this.status,
     required this.actions,
+    this.onStatusToggle,
+    this.onEdit,
   });
 
   bool get _isActive => status == UserStatus.active;
@@ -288,13 +292,12 @@ class AdminUserCard extends StatelessWidget {
         _showUserDetail(context);
         break;
       case 'edit':
-        _showSnackBar(context, 'Editing $name...');
+        onEdit?.call();
         break;
       case 'suspend':
-        _showSnackBar(context, 'Suspending $name...');
-        break;
       case 'activate':
-        _showSnackBar(context, 'Activating $name...');
+      case 'status':
+        onStatusToggle?.call();
         break;
     }
   }
@@ -353,7 +356,8 @@ class _ActionButton extends StatelessWidget {
       case 'edit':
         return const Color(0xFFF59E0B);
       case 'suspend':
-        return const Color(0xFFEF4444);
+      case 'status':
+        return isSuspended ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
       case 'activate':
         return const Color(0xFF22C55E);
       default:
@@ -368,7 +372,8 @@ class _ActionButton extends StatelessWidget {
       case 'edit':
         return Icons.edit;
       case 'suspend':
-        return Icons.block;
+      case 'status':
+        return isSuspended ? Icons.check_circle : Icons.block;
       case 'activate':
         return Icons.check_circle;
       default:
@@ -386,6 +391,8 @@ class _ActionButton extends StatelessWidget {
         return 'Suspend';
       case 'activate':
         return 'Activate';
+      case 'status':
+        return isSuspended ? 'Activate' : 'Suspend';
       default:
         return action;
     }

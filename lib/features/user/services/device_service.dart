@@ -19,16 +19,27 @@ class DeviceService {
   Future<List<dynamic>> getAllDevices() async {
     try {
       final response = await ApiClient.instance.get('/devices');
-      final data = response.data;
-      if (data is List) {
-        return data;
-      } else if (data is Map && data['data'] is List) {
-        return data['data'];
-      }
-      return [];
+      return _extractList(response.data);
     } catch (e) {
       rethrow;
     }
+  }
+
+  List<dynamic> _extractList(dynamic responseData) {
+    if (responseData is List) return responseData;
+    if (responseData is Map) {
+      if (responseData['data'] is List) return responseData['data'];
+      if (responseData['data'] is Map) {
+        final dataMap = responseData['data'] as Map;
+        for (var value in dataMap.values) {
+          if (value is List) return value;
+        }
+      }
+      for (var value in responseData.values) {
+        if (value is List) return value;
+      }
+    }
+    return [];
   }
 
   Future<void> controlDevice({

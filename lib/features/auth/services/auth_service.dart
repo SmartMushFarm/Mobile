@@ -1,6 +1,8 @@
 import 'package:dio/dio.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_storage.dart';
+import '../../../core/config/api_config.dart';
+import '../models/user_model.dart';
 
 class AuthService {
   static Future<Response> register({
@@ -37,18 +39,15 @@ class AuthService {
       final data = response.data;
       String? token;
       
-      // Linh hoạt tìm token
-      if (data['token'] != null) {
-        token = data['token'];
-      } else if (data['accessToken'] != null) {
-        token = data['accessToken'];
-      } else if (data['data'] != null) {
-        if (data['data']['token'] != null) {
-          token = data['data']['token'];
-        } else if (data['data']['accessToken'] != null) {
-          token = data['data']['accessToken'];
-        }
-      }
+      // Linh hoạt tìm token với mọi biến thể
+      final Map<String, dynamic> searchSource = (data is Map && data.containsKey('data')) ? data['data'] : data;
+      
+      token = searchSource['token'] ?? 
+              searchSource['accessToken'] ?? 
+              searchSource['access_token'] ??
+              data['token'] ?? 
+              data['accessToken'] ?? 
+              data['access_token'];
 
       if (token != null) {
         await AuthStorage.saveToken(token);
@@ -83,6 +82,50 @@ class AuthService {
 
   static Future<Map<String, dynamic>?> getCurrentUser() async {
     return await AuthStorage.getUser();
+  }
+
+  static Future<UserModel> fetchMe() async {
+    try {
+      final response = await ApiClient.instance.get(ApiConfig.authMe);
+      final user = UserModel.fromJson(response.data);
+      await AuthStorage.saveUser(user.toJson());
+      return user;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<UserModel> updateMe({
+    required String name,
+    required String phone,
+    required String address,
+  }) async {
+    try {
+      final response = await ApiClient.instance.put(ApiConfig.authMe, data: {
+        'name': name,
+        'phone': phone,
+        'address': address,
+      });
+      final user = UserModel.fromJson(response.data);
+      await AuthStorage.saveUser(user.toJson());
+      return user;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    try {
+      await ApiClient.instance.put(ApiConfig.authChangePassword, data: {
+        'old_password': oldPassword,
+        'new_password': newPassword,
+      });
+    } catch (e) {
+      rethrow;
+    }
   }
 
   static Future<bool> isLoggedIn() async {

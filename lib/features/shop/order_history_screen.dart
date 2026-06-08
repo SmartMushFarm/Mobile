@@ -2,8 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
-import 'package:smartmush_farmer/features/shop/models/order_item.dart';
+import 'package:smartmush_farmer/features/shop/models/order_model.dart';
+import 'package:smartmush_farmer/features/shop/data/order_api_service.dart';
 import 'package:smartmush_farmer/features/shop/widgets/order_card.dart';
+
+enum OrderFilter {
+  all('Tất cả'),
+  pending('Chờ xử lý'),
+  delivering('Đang giao'),
+  delivered('Đã giao'),
+  cancelled('Đã hủy');
+
+  final String label;
+  const OrderFilter(this.label);
+}
 
 class OrderHistoryScreen extends StatefulWidget {
   const OrderHistoryScreen({super.key});
@@ -13,49 +25,58 @@ class OrderHistoryScreen extends StatefulWidget {
 }
 
 class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
+  final OrderApiService _orderService = OrderApiService();
+  List<OrderModel> _orders = [];
+  bool _isLoading = true;
+  String? _error;
   OrderFilter _selectedFilter = OrderFilter.all;
 
-  static const _mockOrders = [
-    OrderItem(
-      id: '1',
-      orderCode: 'SM-829-XJ',
-      products: 'Đèn LED trồng nấm thông minh x1, Phôi nấm bào ngư vàng x2',
-      date: '24/10/2026',
-      total: '3.330.000đ',
-      status: OrderStatus.delivering,
-    ),
-    OrderItem(
-      id: '2',
-      orderCode: 'SM-761-KQ',
-      products: 'Bộ khởi động nấm IoT x1',
-      date: '20/10/2026',
-      total: '1.490.000đ',
-      status: OrderStatus.delivered,
-    ),
-    OrderItem(
-      id: '3',
-      orderCode: 'SM-602-LP',
-      products: 'Cảm biến khí hậu thông minh x1',
-      date: '18/10/2026',
-      total: '890.000đ',
-      status: OrderStatus.pending,
-    ),
-  ];
-
-  List<OrderItem> get _filteredOrders {
-    if (_selectedFilter == OrderFilter.all) return _mockOrders;
-    return _mockOrders
-        .where((o) => o.status.type == _selectedFilter.type)
-        .toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadOrders();
   }
 
-  void _onOrderTap(OrderItem order) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Chi tiết đơn hàng sẽ được cập nhật sau'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+  Future<void> _loadOrders() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final orders = await _orderService.getMyOrders();
+      setState(() {
+        _orders = orders;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Không thể tải lịch sử đơn hàng. Vui lòng thử lại sau.';
+      });
+    }
+  }
+
+  List<OrderModel> get _filteredOrders {
+    if (_selectedFilter == OrderFilter.all) return _orders;
+    return _orders.where((o) {
+      final status = o.status.toLowerCase();
+      switch (_selectedFilter) {
+        case OrderFilter.pending:
+          return status == 'pending';
+        case OrderFilter.delivering:
+          return status == 'shipping' || status == 'confirmed';
+        case OrderFilter.delivered:
+          return status == 'completed' || status == 'delivered';
+        case OrderFilter.cancelled:
+          return status == 'cancelled';
+        default:
+          return true;
+      }
+    }).toList();
+  }
+
+  void _onOrderTap(OrderModel order) {
+    context.push('/shop/order-detail', extra: order.id);
   }
 
   void _onBottomNavSelected(UserNavItem item) {
@@ -81,9 +102,22 @@ class _OrderHistoryScreenState extends State<OrderHistoryScreen> {
             _buildHeader(),
             _buildFilterChips(),
             Expanded(
-              child: _filteredOrders.isEmpty
-                  ? _buildEmptyState()
-                  : _buildOrderList(),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(_error!, style: AppTextStyles.loginSubtitle),
+                              const SizedBox(height: 16),
+                              ElevatedButton(onPressed: _loadOrders, child: const Text('Thử lại')),
+                            ],
+                          ),
+                        )
+                      : _filteredOrders.isEmpty
+                          ? _buildEmptyState()
+                          : _buildOrderList(),
             ),
             _buildSuggestionCard(),
           ],
