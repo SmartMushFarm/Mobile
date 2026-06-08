@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/config/api_config.dart';
 import '../models/product.dart';
@@ -12,10 +13,18 @@ class ShopApiService {
       final response = await _dio.get(ApiConfig.products);
       if (response.data['success'] == true) {
         final List data = response.data['data'];
-        return data.map((json) => ProductModel.fromJson(json)).toList();
+        return data.map((json) {
+          try {
+            return ProductModel.fromJson(json);
+          } catch (e) {
+            debugPrint('Error parsing product: $e, json: $json');
+            rethrow;
+          }
+        }).toList();
       }
       return [];
     } catch (e) {
+      debugPrint('ShopApiService getProducts Error: $e');
       rethrow;
     }
   }
@@ -45,7 +54,7 @@ class ShopApiService {
     }
   }
 
-  // Admin methods
+  // Admin methods for Products
   Future<void> createProduct(Map<String, dynamic> data, dynamic imageFile) async {
     try {
       FormData formData = FormData.fromMap(data);
@@ -79,6 +88,31 @@ class ShopApiService {
   Future<void> deleteProduct(int id) async {
     try {
       await _dio.delete(ApiConfig.productById(id));
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Admin methods for Categories
+  Future<void> createCategory(Map<String, dynamic> data) async {
+    try {
+      await _dio.post(ApiConfig.categories, data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateCategory(int id, Map<String, dynamic> data) async {
+    try {
+      await _dio.put(ApiConfig.categoryById(id), data: data);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> deleteCategory(int id) async {
+    try {
+      await _dio.delete(ApiConfig.categoryById(id));
     } catch (e) {
       rethrow;
     }

@@ -19,12 +19,53 @@ class OrderApiService {
         if (promotionId != null) 'promotion_id': promotionId,
       });
 
-      if (response.data['success'] == true) {
-        return OrderModel.fromJson(response.data['data']);
-      }
-      throw Exception(response.data['message'] ?? 'Checkout failed');
+      final data = response.data['data'] ?? response.data;
+      return OrderModel.fromJson(data);
     } catch (e) {
       debugPrint('OrderApiService checkout Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<OrderModel>> getMyOrders() async {
+    try {
+      final response = await _dio.get(ApiConfig.myOrders);
+      final data = response.data['data'] ?? response.data;
+      if (data is List) {
+        return data.map((json) => OrderModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      debugPrint('OrderApiService getMyOrders Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<OrderModel> getOrderDetail(int id) async {
+    try {
+      final response = await _dio.get(ApiConfig.orderById(id));
+      final data = response.data['data'] ?? response.data;
+      return OrderModel.fromJson(data);
+    } catch (e) {
+      debugPrint('OrderApiService getOrderDetail Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> cancelOrder(int id) async {
+    try {
+      await _dio.put(ApiConfig.cancelOrder(id));
+    } catch (e) {
+      debugPrint('OrderApiService cancelOrder Error: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateOrderStatus({required int orderId, required String status}) async {
+    try {
+      await _dio.put(ApiConfig.updateOrderStatus(orderId), data: {'status': status});
+    } catch (e) {
+      debugPrint('OrderApiService updateOrderStatus Error: $e');
       rethrow;
     }
   }

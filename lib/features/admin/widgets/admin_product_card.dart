@@ -1,27 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
+import 'package:smartmush_farmer/features/shop/models/product.dart';
+import 'package:intl/intl.dart';
 
 enum ProductStockStatus { inStock, lowStock, outOfStock }
 
 class AdminProductCard extends StatelessWidget {
-  final String id;
-  final String name;
-  final String price;
-  final int stock;
-  final ProductStockStatus stockStatus;
+  final ProductModel product;
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
 
   const AdminProductCard({
     super.key,
-    required this.id,
-    required this.name,
-    required this.price,
-    required this.stock,
-    required this.stockStatus,
+    required this.product,
     this.onEdit,
     this.onDelete,
   });
+
+  ProductStockStatus get stockStatus {
+    if (product.stockQuantity <= 0) return ProductStockStatus.outOfStock;
+    if (product.stockQuantity < 10) return ProductStockStatus.lowStock;
+    return ProductStockStatus.inStock;
+  }
 
   String get _stockLabel {
     switch (stockStatus) {
@@ -46,7 +46,7 @@ class AdminProductCard extends StatelessWidget {
   }
 
   IconData get _productIcon {
-    final lower = name.toLowerCase();
+    final lower = product.name.toLowerCase();
     if (lower.contains('led') || lower.contains('light')) return Icons.lightbulb;
     if (lower.contains('mushroom') || lower.contains('culture')) return Icons.eco;
     if (lower.contains('humidity') || lower.contains('sensor')) return Icons.water_drop;
@@ -55,21 +55,10 @@ class AdminProductCard extends StatelessWidget {
     return Icons.shopping_bag;
   }
 
-  void _showSnackBar(BuildContext context, String message) {
-    ScaffoldMessenger.of(context).hideCurrentSnackBar();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(16),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -77,7 +66,7 @@ class AdminProductCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: stockStatus == ProductStockStatus.outOfStock
-              ? const Color(0xFFEF4444).withValues(alpha: 0.3)
+              ? const Color(0xFFEF4444).withOpacity(0.3)
               : AppColors.border,
         ),
       ),
@@ -94,16 +83,31 @@ class AdminProductCard extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: stockStatus == ProductStockStatus.outOfStock
                         ? const Color(0xFFF3F4F6)
-                        : const Color(0xFF43B94E).withValues(alpha: 0.1),
+                        : const Color(0xFF43B94E).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Icon(
-                    _productIcon,
-                    color: stockStatus == ProductStockStatus.outOfStock
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF43B94E),
-                    size: 28,
-                  ),
+                  child: product.imageUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(14),
+                          child: Image.network(
+                            product.imageUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (c, e, s) => Icon(
+                              _productIcon,
+                              color: stockStatus == ProductStockStatus.outOfStock
+                                  ? const Color(0xFF9CA3AF)
+                                  : const Color(0xFF43B94E),
+                              size: 28,
+                            ),
+                          ),
+                        )
+                      : Icon(
+                          _productIcon,
+                          color: stockStatus == ProductStockStatus.outOfStock
+                              ? const Color(0xFF9CA3AF)
+                              : const Color(0xFF43B94E),
+                          size: 28,
+                        ),
                 ),
                 const SizedBox(width: 14),
                 Expanded(
@@ -111,7 +115,7 @@ class AdminProductCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        name,
+                        product.name,
                         style: TextStyle(
                           fontSize: 15,
                           fontWeight: FontWeight.w700,
@@ -124,7 +128,7 @@ class AdminProductCard extends StatelessWidget {
                       Row(
                         children: [
                           Text(
-                            price,
+                            currencyFormat.format(product.price),
                             style: TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -137,7 +141,7 @@ class AdminProductCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                             decoration: BoxDecoration(
-                              color: _stockColor.withValues(alpha: 0.12),
+                              color: _stockColor.withOpacity(0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Row(
@@ -175,11 +179,30 @@ class AdminProductCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Stock: $stock',
+                            'Stock: ${product.stockQuantity}',
                             style: const TextStyle(
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               color: Color(0xFF6B7280),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.category_outlined,
+                            size: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              product.categoryName ?? 'No category',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF6B7280),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -198,54 +221,19 @@ class AdminProductCard extends StatelessWidget {
                   icon: Icons.edit_outlined,
                   label: 'Edit',
                   color: const Color(0xFF0EA5E9),
-                  onTap: () => _showSnackBar(context, 'Editing $name...'),
+                  onTap: onEdit ?? () {},
                 ),
                 const SizedBox(width: 8),
                 _ActionIconButton(
                   icon: Icons.delete_outline,
                   label: 'Delete',
                   color: const Color(0xFFEF4444),
-                  onTap: () => _showDeleteDialog(context),
+                  onTap: onDelete ?? () {},
                 ),
               ],
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
-          'Delete Product',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-        ),
-        content: Text(
-          'Are you sure you want to delete "$name"?',
-          style: const TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFF6B7280))),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              _showSnackBar(context, '$name deleted');
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Delete'),
-          ),
-        ],
       ),
     );
   }
@@ -272,7 +260,7 @@ class _ActionIconButton extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.08),
+            color: color.withOpacity(0.08),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(

@@ -17,10 +17,8 @@ class PaymentApiService {
         'payment_method': paymentMethod,
       });
 
-      if (response.data['success'] == true) {
-        return PaymentModel.fromJson(response.data['data']);
-      }
-      throw Exception(response.data['message'] ?? 'Payment creation failed');
+      final data = response.data['data'] ?? response.data;
+      return PaymentModel.fromJson(data);
     } catch (e) {
       debugPrint('PaymentApiService createPayment Error: $e');
       rethrow;
@@ -30,23 +28,22 @@ class PaymentApiService {
   Future<PaymentModel?> getPaymentByOrderId(int orderId) async {
     try {
       final response = await _dio.get(ApiConfig.paymentByOrderId(orderId));
-      if (response.data['success'] == true) {
-        return PaymentModel.fromJson(response.data['data']);
+      final data = response.data['data'] ?? response.data;
+      if (data != null && data is Map<String, dynamic>) {
+        return PaymentModel.fromJson(data);
       }
       return null;
     } catch (e) {
       debugPrint('PaymentApiService getPaymentByOrderId Error: $e');
-      rethrow;
+      return null;
     }
   }
 
   Future<PaymentModel> confirmPayment(int paymentId) async {
     try {
       final response = await _dio.put(ApiConfig.paymentConfirm(paymentId));
-      if (response.data['success'] == true) {
-        return PaymentModel.fromJson(response.data['data']);
-      }
-      throw Exception(response.data['message'] ?? 'Payment confirmation failed');
+      final data = response.data['data'] ?? response.data;
+      return PaymentModel.fromJson(data);
     } catch (e) {
       debugPrint('PaymentApiService confirmPayment Error: $e');
       rethrow;

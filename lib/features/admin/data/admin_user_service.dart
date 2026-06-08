@@ -6,14 +6,28 @@ class AdminUserService {
   Future<List<UserModel>> getUsers() async {
     try {
       final response = await ApiClient.instance.get(ApiConfig.authUsers);
-      final List data = (response.data['data'] != null && response.data['data'] is List) 
-          ? response.data['data'] 
-          : (response.data is List ? response.data : []);
-      
+      final List data = _extractList(response.data);
       return data.map((json) => UserModel.fromJson(json)).toList();
     } catch (e) {
       rethrow;
     }
+  }
+
+  List<dynamic> _extractList(dynamic responseData) {
+    if (responseData is List) return responseData;
+    if (responseData is Map) {
+      if (responseData['data'] is List) return responseData['data'];
+      if (responseData['data'] is Map) {
+        final dataMap = responseData['data'] as Map;
+        for (var value in dataMap.values) {
+          if (value is List) return value;
+        }
+      }
+      for (var value in responseData.values) {
+        if (value is List) return value;
+      }
+    }
+    return [];
   }
 
   Future<UserModel> updateUser({

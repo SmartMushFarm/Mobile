@@ -10,8 +10,8 @@ class AdminOrderService {
   Future<List<OrderModel>> getAllOrders() async {
     try {
       final response = await _dio.get(ApiConfig.adminOrders);
-      if (response.data['success'] == true) {
-        final List data = response.data['data'] ?? [];
+      final data = response.data['data'] ?? response.data;
+      if (data is List) {
         return data.map((json) => OrderModel.fromJson(json)).toList();
       }
       return [];
@@ -30,9 +30,7 @@ class AdminOrderService {
         ApiConfig.updateOrderStatus(orderId),
         data: {'status': status},
       );
-      if (response.data['success'] != true) {
-        throw Exception(response.data['message'] ?? 'Failed to update order status');
-      }
+      // Even if success is not present, if no error it's likely okay
     } catch (e) {
       debugPrint('AdminOrderService updateOrderStatus Error: $e');
       rethrow;

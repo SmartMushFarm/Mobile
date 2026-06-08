@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/shop/data/order_api_service.dart';
 import 'package:smartmush_farmer/features/shop/models/order_model.dart';
+import 'package:smartmush_farmer/features/shop/data/payment_api_service.dart';
+import 'package:smartmush_farmer/features/shop/models/payment_model.dart';
 import 'package:intl/intl.dart';
 
 class OrderDetailScreen extends StatefulWidget {
@@ -16,7 +18,9 @@ class OrderDetailScreen extends StatefulWidget {
 
 class _OrderDetailScreenState extends State<OrderDetailScreen> {
   final OrderApiService _orderService = OrderApiService();
+  final PaymentApiService _paymentService = PaymentApiService();
   OrderModel? _order;
+  PaymentModel? _payment;
   bool _isLoading = true;
   bool _isCancelling = false;
   String? _error;
@@ -34,8 +38,10 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     });
     try {
       final order = await _orderService.getOrderDetail(widget.orderId);
+      final payment = await _paymentService.getPaymentByOrderId(widget.orderId);
       setState(() {
         _order = order;
+        _payment = payment;
         _isLoading = false;
       });
     } catch (e) {
@@ -63,10 +69,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
     );
 
     if (confirm == true) {
-      setState(() => _isCancelling = true);
+      // Optimistic UI update
+      final previousStatus = _order!.status;
+      setState(() {
+        _order = OrderModel(
+          id: _order!.id,
+          userId: _order!.userId,
+          promotionId: _order!.promotionId,
+          orderDate: _order!.orderDate,
+          status: 'Cancelled',
+          totalAmount: _order!.totalAmount,
+          shippingAddress: _order!.shippingAddress,
+          createdAt: _order!.createdAt,
+          userName: _order!.userName,
+          details: _order!.details,
+        );
+      });
+
       try {
         await _orderService.cancelOrder(widget.orderId);
-        _loadOrderDetail();
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Đã hủy đơn hàng thành công')),
@@ -74,12 +95,25 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
         }
       } catch (e) {
         if (mounted) {
+          // Rollback
+          setState(() {
+            _order = OrderModel(
+              id: _order!.id,
+              userId: _order!.userId,
+              promotionId: _order!.promotionId,
+              orderDate: _order!.orderDate,
+              status: previousStatus,
+              totalAmount: _order!.totalAmount,
+              shippingAddress: _order!.shippingAddress,
+              createdAt: _order!.createdAt,
+              userName: _order!.userName,
+              details: _order!.details,
+            );
+          });
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Hủy đơn hàng thất bại'), backgroundColor: Colors.red),
           );
         }
-      } finally {
-        if (mounted) setState(() => _isCancelling = false);
       }
     }
   }
@@ -130,6 +164,15 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
                         const Text('Địa chỉ giao hàng', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                         const SizedBox(height: 8),
                         Text(_order!.shippingAddress!, style: const TextStyle(color: Colors.grey)),
+                      ],
+                      const SizedBox(height: 24),
+                      if (_payment != null) ...[
+                        const Text('Thông tin thanh toán', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        const SizedBox(height: 8),
+                        _buildInfoRow('Phương thức', _payment!.paymentMethod),
+                        _buildInfoRow('Trạng thái', _payment!.paymentStatus, color: _getPaymentStatusColor(_payment!.paymentStatus)),
+                        if (_payment!.paidAt != null)
+                          _buildInfoRow('Ngày thanh toán', dateFormat.format(_payment!.paidAt!)),
                       ],
                       const SizedBox(height: 40),
                       if (_order!.status.toLowerCase() == 'pending')
@@ -213,6 +256,16 @@ class _OrderDetailScreenState extends State<OrderDetailScreen> {
       case 'shipping': return Colors.purple;
       case 'completed': return Colors.green;
       case 'cancelled': return Colors.red;
+      default: return Colors.grey;
+    }
+  }
+
+  Color _getPaymentStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'pending': return Colors.orange;
+      case 'paid': return Colors.green;
+      case 'failed': return Colors.red;
+      case 'refunded': return Colors.blue;
       default: return Colors.grey;
     }
   }

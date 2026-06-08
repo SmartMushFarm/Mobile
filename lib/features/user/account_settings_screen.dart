@@ -5,6 +5,9 @@ import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
 import 'package:smartmush_farmer/features/user/widgets/settings_item.dart';
 import 'package:smartmush_farmer/features/user/widgets/settings_section.dart';
 import 'package:smartmush_farmer/features/user/widgets/settings_toggle_item.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -18,10 +21,33 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   bool _autoSync = true;
   bool _darkMode = false;
 
-  void _showSnackBar(String message) {
+  UserModel? _user;
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUser();
+  }
+
+  Future<void> _loadUser() async {
+    setState(() => _isLoading = true);
+    try {
+      final user = await AuthService.fetchMe();
+      setState(() {
+        _user = user;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
+        backgroundColor: isError ? Colors.red : null,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -39,9 +65,12 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
             child: const Text('Hủy'),
           ),
           TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              context.go('/login');
+            onPressed: () async {
+              await AuthService.logout();
+              if (mounted) {
+                Navigator.pop(ctx);
+                context.go('/login');
+              }
             },
             child: Text(
               'Đăng xuất',
@@ -81,6 +110,132 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
+  void _showEditProfileDialog() {
+    final nameController = TextEditingController(text: _user?.name);
+    final phoneController = TextEditingController(text: _user?.phone);
+    final addressController = TextEditingController(text: _user?.address);
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Chỉnh sửa hồ sơ'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                decoration: const InputDecoration(labelText: 'Họ và tên'),
+              ),
+              TextField(
+                controller: phoneController,
+                decoration: const InputDecoration(labelText: 'Số điện thoại'),
+                keyboardType: TextInputType.phone,
+              ),
+              TextField(
+                controller: addressController,
+                decoration: const InputDecoration(labelText: 'Địa chỉ'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          ElevatedButton(
+            onPressed: () async {
+              if (nameController.text.trim().isEmpty) {
+                _showSnackBar('Tên không được để trống', isError: true);
+                return;
+              }
+              try {
+                final updatedUser = await AuthService.updateMe(
+                  name: nameController.text.trim(),
+                  phone: phoneController.text.trim(),
+                  address: addressController.text.trim(),
+                );
+                setState(() => _user = updatedUser);
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSnackBar('Cập nhật hồ sơ thành công');
+                }
+              } catch (e) {
+                if (mounted) _showSnackBar('Cập nhật thất bại: $e', isError: true);
+              }
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showChangePasswordDialog() {
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đổi mật khẩu'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: oldPasswordController,
+                decoration: const InputDecoration(labelText: 'Mật khẩu cũ'),
+                obscureText: true,
+              ),
+              TextField(
+                controller: newPasswordController,
+                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
+                obscureText: true,
+              ),
+              TextField(
+                controller: confirmPasswordController,
+                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
+                obscureText: true,
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          ElevatedButton(
+            onPressed: () async {
+              if (newPasswordController.text != confirmPasswordController.text) {
+                _showSnackBar('Mật khẩu xác nhận không khớp', isError: true);
+                return;
+              }
+              if (newPasswordController.text.length < 6) {
+                _showSnackBar('Mật khẩu mới phải có ít nhất 6 ký tự', isError: true);
+                return;
+              }
+              try {
+                await AuthService.changePassword(
+                  oldPassword: oldPasswordController.text,
+                  newPassword: newPasswordController.text,
+                );
+                if (mounted) {
+                  Navigator.pop(context);
+                  _showSnackBar('Đổi mật khẩu thành công');
+                }
+              } catch (e) {
+                String msg = 'Đổi mật khẩu thất bại';
+                if (e.toString().contains('401')) {
+                  msg = 'Mật khẩu cũ không chính xác';
+                }
+                if (mounted) _showSnackBar(msg, isError: true);
+              }
+            },
+            child: const Text('Đổi mật khẩu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _onBottomNavSelected(UserNavItem item) {
     switch (item) {
       case UserNavItem.home:
@@ -90,7 +245,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
       case UserNavItem.alerts:
         context.push('/alerts');
       case UserNavItem.profile:
-        context.go('/profile');
+        if (_user?.role == 'admin') {
+          context.go('/admin/profile');
+        } else {
+          context.go('/profile');
+        }
     }
   }
 
@@ -99,56 +258,68 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       body: SafeArea(
-        child: Column(
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
           children: [
             _buildHeader(),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    Text(
-                      'Cài đặt tài khoản',
-                      style: AppTextStyles.registerTitle.copyWith(
-                        fontSize: 22,
-                        color: AppColors.shopTextPrimary,
+              child: RefreshIndicator(
+                onRefresh: _loadUser,
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Text(
+                        'Cài đặt tài khoản',
+                        style: AppTextStyles.registerTitle.copyWith(
+                          fontSize: 22,
+                          color: AppColors.shopTextPrimary,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Quản lý hồ sơ, cảm biến và tùy chọn toàn cục.',
-                      style: AppTextStyles.loginSubtitle,
-                    ),
-                    const SizedBox(height: 24),
-                    _buildProfileSection(),
-                    const SizedBox(height: 24),
-                    _buildSecuritySection(),
-                    const SizedBox(height: 24),
-                    _buildPreferencesSection(),
-                    const SizedBox(height: 24),
-                    _buildSmartFarmSection(),
-                    const SizedBox(height: 24),
-                    _buildDangerSection(),
-                    const SizedBox(height: 32),
-                    _buildAppInfo(),
-                    const SizedBox(height: 24),
-                  ],
+                      const SizedBox(height: 4),
+                      Text(
+                        'Quản lý hồ sơ, cảm biến và tùy chọn toàn cục.',
+                        style: AppTextStyles.loginSubtitle,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildProfileSection(),
+                      const SizedBox(height: 24),
+                      _buildSecuritySection(),
+                      const SizedBox(height: 24),
+                      _buildPreferencesSection(),
+                      const SizedBox(height: 24),
+                      _buildSmartFarmSection(),
+                      const SizedBox(height: 24),
+                      _buildDangerSection(),
+                      const SizedBox(height: 32),
+                      _buildAppInfo(),
+                      const SizedBox(height: 24),
+                    ],
+                  ),
                 ),
               ),
             ),
           ],
         ),
       ),
-      bottomNavigationBar: UserBottomNav(
-        currentItem: UserNavItem.profile,
-        onItemSelected: _onBottomNavSelected,
-      ),
+      bottomNavigationBar: _user?.role == 'admin'
+          ? const AdminBottomNav(currentIndex: 4)
+          : UserBottomNav(
+              currentItem: UserNavItem.profile,
+              onItemSelected: _onBottomNavSelected,
+            ),
     );
   }
 
   Widget _buildHeader() {
+    String initials = "A";
+    if (_user?.name != null && _user!.name!.isNotEmpty) {
+      initials = _user!.name![0].toUpperCase();
+    }
+
     return Container(
       height: 64,
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -157,7 +328,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.loginLabel),
-            onPressed: () => context.go('/profile'),
+            onPressed: () {
+              if (_user?.role == 'admin') {
+                context.go('/admin/profile');
+              } else {
+                context.go('/profile');
+              }
+            },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -190,10 +367,13 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           CircleAvatar(
             radius: 16,
             backgroundColor: AppColors.primary,
-            child: const Icon(
-              Icons.person,
-              size: 16,
-              color: Color(0xFF003C0B),
+            child: Text(
+              initials,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF003C0B),
+              ),
             ),
           ),
         ],
@@ -229,10 +409,11 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   shape: BoxShape.circle,
                   color: AppColors.profileAvatarBorder,
                 ),
-                child: const Icon(
-                  Icons.person,
-                  size: 32,
-                  color: AppColors.shopTextSecondary,
+                child: Center(
+                  child: Text(
+                    (_user?.name != null && _user!.name!.isNotEmpty) ? _user!.name![0].toUpperCase() : "A",
+                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.shopTextSecondary),
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -241,7 +422,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Farmer Joe',
+                      _user?.name ?? 'Chưa cập nhật',
                       style: AppTextStyles.registerTitle.copyWith(
                         fontSize: 20,
                         height: 28 / 20,
@@ -250,7 +431,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'farmer.joe@email.com',
+                      _user?.email ?? 'Chưa cập nhật',
                       style: AppTextStyles.loginSubtitle,
                     ),
                     const SizedBox(height: 4),
@@ -263,7 +444,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          '0901 234 567',
+                          _user?.phone ?? 'Chưa cập nhật',
                           style: AppTextStyles.orderCardDate,
                         ),
                       ],
@@ -277,7 +458,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           const Divider(color: AppColors.orderCardBorder, height: 1),
           const SizedBox(height: 12),
           GestureDetector(
-            onTap: () => _showSnackBar('Chỉnh sửa hồ sơ'),
+            onTap: _showEditProfileDialog,
             child: Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -308,19 +489,19 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
         SettingsItem(
           icon: Icons.lock_outline,
           label: 'Đổi mật khẩu',
-          onTap: () => _showSnackBar('Đổi mật khẩu'),
+          onTap: _showChangePasswordDialog,
         ),
         const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
         SettingsItem(
           icon: Icons.shield_outlined,
           label: 'Xác thực hai lớp',
-          onTap: () => _showSnackBar('Xác thực hai lớp'),
+          onTap: () => _showSnackBar('Tính năng sắp ra mắt'),
         ),
         const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
         SettingsItem(
           icon: Icons.devices_outlined,
           label: 'Thiết bị đã đăng nhập',
-          onTap: () => _showSnackBar('Thiết bị đã đăng nhập'),
+          onTap: () => _showSnackBar('Tính năng sắp ra mắt'),
         ),
       ],
     );

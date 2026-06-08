@@ -4,8 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/category_chip.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
-import 'package:smartmush_farmer/features/shop/data/mock_products.dart';
+import 'package:smartmush_farmer/features/shop/data/shop_api_service.dart';
+import 'package:smartmush_farmer/features/shop/data/cart_api_service.dart';
 import 'package:smartmush_farmer/features/shop/models/product.dart';
+import 'package:smartmush_farmer/features/shop/models/category_model.dart';
 import 'package:smartmush_farmer/features/shop/widgets/product_card.dart';
 
 class ShopScreen extends StatefulWidget {
@@ -16,26 +18,93 @@ class ShopScreen extends StatefulWidget {
 }
 
 class _ShopScreenState extends State<ShopScreen> {
-  ProductCategory _selectedCategory = ProductCategory.all;
-  int _cartCount = 2;
+  final ShopApiService _apiService = ShopApiService();
+  final CartApiService _cartService = CartApiService();
+  List<ProductModel> _products = [];
+  List<CategoryModel> _categories = [];
+  int? _selectedCategoryId;
+  String _searchQuery = '';
+  bool _isLoading = true;
+  String? _error;
 
-  void _onCategorySelected(ProductCategory category) {
-    setState(() => _selectedCategory = category);
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  void _onProductTap(Product product) {
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+    try {
+      final results = await Future.wait([
+        _apiService.getProducts(),
+        _apiService.getCategories(),
+      ]);
+      setState(() {
+        _products = results[0] as List<ProductModel>;
+        _categories = results[1] as List<CategoryModel>;
+        _isLoading = false;
+      });
+    } catch (e) {
+      debugPrint('ShopScreen _loadData Error: $e');
+      setState(() {
+        _isLoading = false;
+        _error = 'Không thể tải dữ liệu. Vui lòng thử lại sau.';
+      });
+    }
+  }
+
+  void _onCategorySelected(int? categoryId) {
+    setState(() => _selectedCategoryId = categoryId);
+  }
+
+  void _onProductTap(ProductModel product) {
     context.push('/shop/product-detail', extra: product.id);
   }
 
-  void _onAddToCart(Product product) {
-    setState(() => _cartCount++);
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('${product.name} đã được thêm vào giỏ hàng'),
-        behavior: SnackBarBehavior.floating,
-        duration: const Duration(seconds: 2),
-      ),
-    );
+  // Chuyển string tiếng Việt có dấu thành không dấu và viết thường
+  String _toNoDiacritics(String str) {
+    var result = str.toLowerCase();
+    result = result.replaceAll(RegExp(r'[àáạảãâầấậẩẫăằắặẳẵ]'), 'a');
+    result = result.replaceAll(RegExp(r'[èéẹẻẽêềếệểễ]'), 'e');
+    result = result.replaceAll(RegExp(r'[ìíịỉĩ]'), 'i');
+    result = result.replaceAll(RegExp(r'[òóọỏõôồốộổỗơờớợởỡ]'), 'o');
+    result = result.replaceAll(RegExp(r'[ùúụủũưừứựửữ]'), 'u');
+    result = result.replaceAll(RegExp(r'[ỳýỵỷỹ]'), 'y');
+    result = result.replaceAll(RegExp(r'[đ]'), 'd');
+    
+    // Xóa các ký tự kết hợp (combining marks) nếu còn
+    result = result.replaceAll(RegExp(r'[\u0300-\u036f]'), '');
+    return result;
+  }
+
+  Future<void> _onAddToCart(ProductModel product) async {
+    try {
+      await _cartService.addItemToCart(productId: product.id, quantity: 1);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${product.name} đã được thêm vào giỏ hàng'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Không thể thêm vào giỏ hàng. Vui lòng thử lại.'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   void _onBottomNavSelected(UserNavItem item) {
@@ -53,7 +122,18 @@ class _ShopScreenState extends State<ShopScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final products = productsByCategory(_selectedCategory);
+    final filteredProducts = _products.where((p) {
+      final matchesCategory =
+          _selectedCategoryId == null || p.categoryId == _selectedCategoryId;
+
+      final productNameNormalized = _toNoDiacritics(p.name);
+      final queryNormalized = _toNoDiacritics(_searchQuery);
+
+      final matchesSearch = _searchQuery.isEmpty ||
+          productNameNormalized.contains(queryNormalized);
+
+      return matchesCategory && matchesSearch;
+    }).toList();
 
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
@@ -70,19 +150,37 @@ class _ShopScreenState extends State<ShopScreen> {
                   children: [
                     _buildHeader(),
                     Expanded(
-                      child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildSearchBar(),
-                            const SizedBox(height: 12),
-                            _buildCategoryChips(),
-                            const SizedBox(height: 20),
-                            _buildProductGrid(products),
-                          ],
-                        ),
-                      ),
+                      child: _isLoading
+                          ? const Center(child: CircularProgressIndicator())
+                          : _error != null
+                              ? Center(
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(_error!, style: AppTextStyles.loginSubtitle),
+                                      TextButton(
+                                        onPressed: _loadData,
+                                        child: const Text('Thử lại'),
+                                      ),
+                                    ],
+                                  ),
+                                )
+                              : RefreshIndicator(
+                                  onRefresh: _loadData,
+                                  child: SingleChildScrollView(
+                                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 100),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _buildSearchBar(),
+                                        const SizedBox(height: 12),
+                                        _buildCategoryChips(),
+                                        const SizedBox(height: 20),
+                                        _buildProductGrid(filteredProducts),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                     ),
                   ],
                 ),
@@ -137,7 +235,12 @@ class _ShopScreenState extends State<ShopScreen> {
         ],
       ),
       child: TextField(
-        style: AppTextStyles.shopSearchHint,
+        onChanged: (value) {
+          setState(() {
+            _searchQuery = value;
+          });
+        },
+        style: AppTextStyles.shopSearchHint.copyWith(color: AppColors.shopTextPrimary),
         decoration: InputDecoration(
           hintText: 'Tìm phôi nấm, thiết bị...',
           hintStyle: AppTextStyles.shopSearchHint,
@@ -165,38 +268,31 @@ class _ShopScreenState extends State<ShopScreen> {
         children: [
           CategoryChip(
             label: 'Tất cả',
-            isSelected: _selectedCategory == ProductCategory.all,
-            onTap: () => _onCategorySelected(ProductCategory.all),
+            isSelected: _selectedCategoryId == null,
+            onTap: () => _onCategorySelected(null),
           ),
-          const SizedBox(width: 8),
-          CategoryChip(
-            label: 'Thiết bị',
-            isSelected: _selectedCategory == ProductCategory.devices,
-            onTap: () => _onCategorySelected(ProductCategory.devices),
-          ),
-          const SizedBox(width: 8),
-          CategoryChip(
-            label: 'Phôi nấm',
-            isSelected: _selectedCategory == ProductCategory.spawn,
-            onTap: () => _onCategorySelected(ProductCategory.spawn),
-          ),
-          const SizedBox(width: 8),
-          CategoryChip(
-            label: 'Bộ kit',
-            isSelected: _selectedCategory == ProductCategory.kits,
-            onTap: () => _onCategorySelected(ProductCategory.kits),
-          ),
+          ..._categories.map((category) => Padding(
+                padding: const EdgeInsets.only(left: 8.0),
+                child: CategoryChip(
+                  label: category.name,
+                  isSelected: _selectedCategoryId == category.id,
+                  onTap: () => _onCategorySelected(category.id),
+                ),
+              )),
         ],
       ),
     );
   }
 
-  Widget _buildProductGrid(List<Product> products) {
+  Widget _buildProductGrid(List<ProductModel> products) {
     if (products.isEmpty) {
       return Center(
-        child: Text(
-          'Không có sản phẩm nào',
-          style: AppTextStyles.loginSubtitle,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 40),
+          child: Text(
+            'Không có sản phẩm nào',
+            style: AppTextStyles.loginSubtitle,
+          ),
         ),
       );
     }
@@ -208,12 +304,12 @@ class _ShopScreenState extends State<ShopScreen> {
 
     return Column(
       children: [
-        if (standardProducts.length >= 2) ...[
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              for (int i = 0; i < 2 && i < standardProducts.length; i++) ...[
-                if (i > 0) const SizedBox(width: 12),
+        if (standardProducts.isNotEmpty) ...[
+          for (int i = 0; i < standardProducts.length; i += 2) ...[
+            if (i > 0) const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Expanded(
                   child: ProductCard(
                     product: standardProducts[i],
@@ -221,42 +317,33 @@ class _ShopScreenState extends State<ShopScreen> {
                     onAddToCart: () => _onAddToCart(standardProducts[i]),
                   ),
                 ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 12),
-        ],
-        ...wideProducts.map(
-          (p) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: ProductCard(
-              product: p,
-              onTap: () => _onProductTap(p),
-              onAddToCart: () => _onAddToCart(p),
-            ),
-          ),
-        ),
-        if (standardProducts.length > 2) ...[
-          for (int i = 2; i < standardProducts.length; i += 2) ...[
-            const SizedBox(height: 12),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (int j = i;
-                    j < i + 2 && j < standardProducts.length;
-                    j++) ...[
-                  if (j > i) const SizedBox(width: 12),
+                const SizedBox(width: 12),
+                if (i + 1 < standardProducts.length)
                   Expanded(
                     child: ProductCard(
-                      product: standardProducts[j],
-                      onTap: () => _onProductTap(standardProducts[j]),
-                      onAddToCart: () => _onAddToCart(standardProducts[j]),
+                      product: standardProducts[i + 1],
+                      onTap: () => _onProductTap(standardProducts[i + 1]),
+                      onAddToCart: () => _onAddToCart(standardProducts[i + 1]),
                     ),
-                  ),
-                ],
+                  )
+                else
+                  const Expanded(child: SizedBox()),
               ],
             ),
           ],
+        ],
+        if (wideProducts.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          ...wideProducts.map(
+            (p) => Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ProductCard(
+                product: p,
+                onTap: () => _onProductTap(p),
+                onAddToCart: () => _onAddToCart(p),
+              ),
+            ),
+          ),
         ],
       ],
     );

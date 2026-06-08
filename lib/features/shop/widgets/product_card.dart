@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/shop/models/product.dart';
+import 'package:intl/intl.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({
@@ -11,12 +12,12 @@ class ProductCard extends StatelessWidget {
     required this.onAddToCart,
   });
 
-  final Product product;
+  final ProductModel product;
   final VoidCallback onTap;
   final VoidCallback onAddToCart;
 
-  Widget _errorPlaceholder(BuildContext _, Object? err, StackTrace? trace) =>
-      const SizedBox();
+  Widget _buildErrorWidget() =>
+      const Center(child: Icon(Icons.image_not_supported, color: Colors.grey));
 
   @override
   Widget build(BuildContext context) {
@@ -97,11 +98,13 @@ class ProductCard extends StatelessWidget {
               aspectRatio: 139.19 / 202,
               child: Container(
                 color: AppColors.shopCardImageBg,
-                child: Image.network(
-                  product.imageUrl,
-                  fit: BoxFit.cover,
-                  errorBuilder: _errorPlaceholder,
-                ),
+                child: product.imageUrl != null
+                    ? Image.network(
+                        product.imageUrl!,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+                      )
+                    : _buildErrorWidget(),
               ),
             ),
             Expanded(
@@ -112,7 +115,7 @@ class ProductCard extends StatelessWidget {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text(
-                      'THIẾT BỊ',
+                      product.categoryName?.toUpperCase() ?? 'SẢN PHẨM',
                       style: GoogleFonts.inter(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
@@ -129,7 +132,7 @@ class ProductCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      product.description,
+                      product.description ?? '',
                       style: AppTextStyles.shopProductDesc,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -154,11 +157,13 @@ class ProductCard extends StatelessWidget {
           Positioned.fill(
             child: Container(
               color: AppColors.shopCardImageBg,
-              child: Image.network(
-                product.imageUrl,
-                fit: BoxFit.cover,
-                errorBuilder: _errorPlaceholder,
-              ),
+              child: product.imageUrl != null
+                  ? Image.network(
+                      product.imageUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => _buildErrorWidget(),
+                    )
+                  : _buildErrorWidget(),
             ),
           ),
           if (product.isBestSeller)
@@ -208,12 +213,13 @@ class ProductCard extends StatelessWidget {
   }
 
   Widget _buildPriceRow({required bool addToCart, bool compact = true}) {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Expanded(
           child: Text(
-            product.price,
+            currencyFormat.format(product.price),
             style: AppTextStyles.shopPrice,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

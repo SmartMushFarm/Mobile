@@ -3,10 +3,16 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
+import 'package:smartmush_farmer/features/shop/models/cart_model.dart';
+import 'package:smartmush_farmer/features/shop/data/cart_api_service.dart';
+import 'package:smartmush_farmer/features/shop/data/order_api_service.dart';
 import 'package:smartmush_farmer/features/shop/models/checkout_item.dart';
 import 'package:smartmush_farmer/features/shop/widgets/checkout_section_card.dart';
 import 'package:smartmush_farmer/features/shop/widgets/delivery_method_card.dart';
 import 'package:smartmush_farmer/features/shop/widgets/payment_method_card.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+import 'package:intl/intl.dart';
 
 class CheckoutScreen extends StatefulWidget {
   const CheckoutScreen({super.key, this.from});
@@ -18,46 +24,65 @@ class CheckoutScreen extends StatefulWidget {
 }
 
 class _CheckoutScreenState extends State<CheckoutScreen> {
-  DeliveryMethod _selectedDelivery = DeliveryMethod.standard;
-  PaymentMethod _selectedPayment = PaymentMethod.creditCard;
+  final CartApiService _cartService = CartApiService();
+  final OrderApiService _orderService = OrderApiService();
+  CartModel? _cart;
+  bool _isLoading = true;
+  bool _isPlacingOrder = false;
+
+  final TextEditingController _addressController = TextEditingController();
   final TextEditingController _promoController = TextEditingController();
 
-  static const _ledImage =
-      'https://www.figma.com/api/mcp/asset/ac070f7c-928b-46ef-9ede-d389227be3b8';
-  static const _spawnImage =
-      'https://www.figma.com/api/mcp/asset/383f08e6-84cd-4007-bc77-49a35dea7b4f';
+  DeliveryMethod _selectedDelivery = DeliveryMethod.standard;
+  PaymentMethod _selectedPayment = PaymentMethod.cod;
 
-  static const _orderItems = [
-    CheckoutItem(
-      name: 'Đèn LED trồng nấm thông minh',
-      price: '2.150.000đ',
-      quantity: 1,
-      imageUrl: _ledImage,
-    ),
-    CheckoutItem(
-      name: 'Phôi nấm bào ngư vàng',
-      price: '295.000đ',
-      quantity: 2,
-      imageUrl: _spawnImage,
-    ),
-  ];
-
-  CheckoutSummary get _summary {
-    // Subtotal: Đèn LED x1 + Phôi x2
-    final subtotal = 2150000 + (295000 * 2);
-    final shipping = _selectedDelivery == DeliveryMethod.standard ? 35000 : 55000;
-    final tax = (subtotal * 0.05).round();
-    final total = subtotal + shipping + tax;
-    return CheckoutSummary(
-      subtotal: _formatPrice(subtotal),
-      shipping: _formatPrice(shipping),
-      tax: _formatPrice(tax),
-      total: _formatPrice(total),
-    );
+  @override
+  void initState() {
+    super.initState();
+    _loadInitialData();
   }
 
-  String _formatPrice(int n) =>
-      '${(n ~/ 1000).toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.')}đ';
+  Future<void> _loadInitialData() async {
+    setState(() => _isLoading = true);
+    try {
+      final results = await Future.wait([
+        _cartService.getCart(),
+        AuthService.fetchMe(),
+      ]);
+
+      final cart = results[0] as CartModel?;
+      final user = results[1] as UserModel?;
+
+      setState(() {
+        _cart = cart;
+        if (user?.address != null && user!.address!.isNotEmpty) {
+          _addressController.text = user.address!;
+        }
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _loadCart() async {
+    // This is now handled in _loadInitialData
+  }
+
+  CheckoutSummary get _summary {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    double subtotal = _cart?.totalAmount ?? 0;
+    double shipping = _selectedDelivery == DeliveryMethod.standard ? 35000 : 55000;
+    double tax = (subtotal * 0.05);
+    double total = subtotal + shipping + tax;
+    
+    return CheckoutSummary(
+      subtotal: currencyFormat.format(subtotal),
+      shipping: currencyFormat.format(shipping),
+      tax: currencyFormat.format(tax),
+      total: currencyFormat.format(total),
+    );
+  }
 
   void _onApplyPromo() {
     final code = _promoController.text.trim();
@@ -70,14 +95,52 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     );
   }
 
-  void _onPlaceOrder() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đặt hàng thành công'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    context.push('/shop/order-history');
+  Future<void> _onPlaceOrder() async {
+    if (_addressController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập địa chỉ giao hàng')),
+      );
+      return;
+    }
+
+    setState(() => _isPlacingOrder = true);
+    try {
+      final order = await _orderService.checkout(
+        shippingAddress: _addressController.text.trim(),
+        paymentMethod: _selectedPayment == PaymentMethod.cod ? 'COD' : 'QR',
+      );
+      
+      if (mounted) {
+        if (_selectedPayment == PaymentMethod.cod) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Đặt hàng thành công'),
+              behavior: SnackBarBehavior.floating,
+              backgroundColor: Colors.green,
+            ),
+          );
+          context.push('/shop/order-history');
+        } else {
+          context.push('/shop/payment', extra: {
+            'orderId': order.id,
+            'amount': order.totalAmount,
+            'paymentMethod': 'QR',
+          });
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Đặt hàng thất bại: ${e.toString()}'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPlacingOrder = false);
+    }
   }
 
   void _onBottomNavSelected(UserNavItem item) {
@@ -95,6 +158,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   @override
   void dispose() {
+    _addressController.dispose();
     _promoController.dispose();
     super.dispose();
   }
@@ -104,7 +168,9 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       body: SafeArea(
-        child: LayoutBuilder(
+        child: _isLoading 
+          ? const Center(child: CircularProgressIndicator())
+          : LayoutBuilder(
           builder: (context, constraints) {
             final maxWidth = constraints.maxWidth.clamp(0.0, 448.0);
 
@@ -197,25 +263,22 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Nguyễn Văn A',
+                  'Địa chỉ giao hàng',
                   style: AppTextStyles.checkoutAddressName,
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  '123 Nguyễn Huệ, Quận 1, TP.HCM',
+                TextField(
+                  controller: _addressController,
+                  maxLines: 2,
                   style: AppTextStyles.checkoutAddressDetail,
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '0901 234 567',
-                  style: AppTextStyles.checkoutAddressDetail,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ],
             ),
-          ),
-          GestureDetector(
-            onTap: () {},
-            child: Text('SỬA', style: AppTextStyles.checkoutEditBtn),
           ),
         ],
       ),
@@ -223,12 +286,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   }
 
   Widget _buildOrderSummary() {
+    final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
+    if (_cart == null) return const SizedBox();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text('Tóm tắt đơn hàng', style: AppTextStyles.checkoutSectionTitle),
         const SizedBox(height: 12),
-        ..._orderItems.map((item) => Padding(
+        ..._cart!.items.map((item) => Padding(
               padding: const EdgeInsets.only(bottom: 10),
               child: CheckoutSectionCard(
                 padding: const EdgeInsets.all(13),
@@ -242,11 +308,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                       clipBehavior: Clip.antiAlias,
-                      child: Image.network(
-                        item.imageUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: _imgError,
-                      ),
+                      child: item.productImageUrl != null 
+                        ? Image.network(
+                          item.productImageUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: _imgError,
+                        )
+                        : _imgError(context, null, null),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -254,7 +322,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            item.name,
+                            item.productName ?? 'Sản phẩm',
                             style: AppTextStyles.checkoutOrderItemName,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
@@ -268,7 +336,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       ),
                     ),
                     Text(
-                      item.price,
+                      currencyFormat.format(item.price),
                       style: AppTextStyles.checkoutOrderItemPrice,
                     ),
                   ],
@@ -410,7 +478,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           width: double.infinity,
           height: 56,
           child: GestureDetector(
-            onTap: _onPlaceOrder,
+            onTap: _isPlacingOrder ? null : _onPlaceOrder,
             child: Container(
               decoration: BoxDecoration(
                 color: AppColors.shopPrice,
@@ -424,7 +492,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                 ],
               ),
               alignment: Alignment.center,
-              child: Text('Đặt hàng', style: AppTextStyles.checkoutPlaceOrderBtn),
+              child: _isPlacingOrder 
+                ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                  )
+                : Text('Đặt hàng', style: AppTextStyles.checkoutPlaceOrderBtn),
             ),
           ),
         ),
