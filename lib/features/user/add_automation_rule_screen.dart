@@ -97,7 +97,11 @@ class _AddAutomationRuleScreenState extends State<AddAutomationRuleScreen> {
   }
 
   void _onSave() {
-    context.pop();
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/home');
+    }
   }
 
   @override

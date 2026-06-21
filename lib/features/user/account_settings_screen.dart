@@ -27,19 +27,37 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
   @override
   void initState() {
     super.initState();
+    _initUser();
+  }
+
+  Future<void> _initUser() async {
+    // Thử lấy user từ storage trước để tránh flicker UI (admin/user bottom nav)
+    final userMap = await AuthService.getCurrentUser();
+    if (userMap != null) {
+      setState(() {
+        _user = UserModel.fromJson(userMap);
+      });
+    }
+    // Sau đó mới load data mới nhất từ API
     _loadUser();
   }
 
   Future<void> _loadUser() async {
-    setState(() => _isLoading = true);
+    // Nếu đã có user từ storage rồi thì không hiện loading to đùng nữa
+    if (_user == null) {
+      setState(() => _isLoading = true);
+    }
+    
     try {
       final user = await AuthService.fetchMe();
-      setState(() {
-        _user = user;
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _user = user;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -169,69 +187,120 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
     );
   }
 
-  void _showChangePasswordDialog() {
-    final oldPasswordController = TextEditingController();
+  void _showChangePasswordDialog() async {
+    // 1. Hiện thông báo đang gửi OTP
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      // 2. Gọi API gửi OTP ngay lập tức
+      await AuthService.requestChangePasswordOTP();
+      if (mounted) {
+        Navigator.pop(context); // Đóng loading
+        _showVerifyAndChangePasswordDialog(); // Hiện form nhập liệu
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Đóng loading
+        _showSnackBar('Không thể gửi mã OTP. Vui lòng thử lại.', isError: true);
+      }
+    }
+  }
+
+  void _showVerifyAndChangePasswordDialog() {
     final newPasswordController = TextEditingController();
     final confirmPasswordController = TextEditingController();
+    final otpController = TextEditingController();
+    bool isSubmitting = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Đổi mật khẩu'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: oldPasswordController,
-                decoration: const InputDecoration(labelText: 'Mật khẩu cũ'),
-                obscureText: true,
-              ),
-              TextField(
-                controller: newPasswordController,
-                decoration: const InputDecoration(labelText: 'Mật khẩu mới'),
-                obscureText: true,
-              ),
-              TextField(
-                controller: confirmPasswordController,
-                decoration: const InputDecoration(labelText: 'Xác nhận mật khẩu mới'),
-                obscureText: true,
-              ),
-            ],
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Xác thực đổi mật khẩu'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và nhập thông tin bên dưới.',
+                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: otpController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mã OTP (6 số)',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: newPasswordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Mật khẩu mới',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: confirmPasswordController,
+                  decoration: const InputDecoration(
+                    labelText: 'Xác nhận mật khẩu mới',
+                    border: OutlineInputBorder(),
+                  ),
+                  obscureText: true,
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: isSubmitting ? null : () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: isSubmitting ? null : () async {
+                if (otpController.text.length < 6) {
+                  _showSnackBar('Vui lòng nhập đủ mã OTP', isError: true);
+                  return;
+                }
+                if (newPasswordController.text != confirmPasswordController.text) {
+                  _showSnackBar('Mật khẩu xác nhận không khớp', isError: true);
+                  return;
+                }
+                if (newPasswordController.text.length < 8) {
+                  _showSnackBar('Mật khẩu phải từ 8 ký tự', isError: true);
+                  return;
+                }
+
+                setDialogState(() => isSubmitting = true);
+                try {
+                  await AuthService.changePasswordOTP(
+                    otp: otpController.text.trim(),
+                    newPassword: newPasswordController.text,
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    _showSnackBar('Đổi mật khẩu thành công');
+                  }
+                } catch (e) {
+                  setDialogState(() => isSubmitting = false);
+                  _showSnackBar('Mã OTP không đúng hoặc đã hết hạn', isError: true);
+                }
+              },
+              child: isSubmitting 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Xác nhận'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
-          ElevatedButton(
-            onPressed: () async {
-              if (newPasswordController.text != confirmPasswordController.text) {
-                _showSnackBar('Mật khẩu xác nhận không khớp', isError: true);
-                return;
-              }
-              if (newPasswordController.text.length < 6) {
-                _showSnackBar('Mật khẩu mới phải có ít nhất 6 ký tự', isError: true);
-                return;
-              }
-              try {
-                await AuthService.changePassword(
-                  oldPassword: oldPasswordController.text,
-                  newPassword: newPasswordController.text,
-                );
-                if (mounted) {
-                  Navigator.pop(context);
-                  _showSnackBar('Đổi mật khẩu thành công');
-                }
-              } catch (e) {
-                String msg = 'Đổi mật khẩu thất bại';
-                if (e.toString().contains('401')) {
-                  msg = 'Mật khẩu cũ không chính xác';
-                }
-                if (mounted) _showSnackBar(msg, isError: true);
-              }
-            },
-            child: const Text('Đổi mật khẩu'),
-          ),
-        ],
       ),
     );
   }
@@ -255,10 +324,21 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Xác định bottom nav dựa trên role
+    Widget? bottomNav;
+    if (_user != null) {
+      bottomNav = _user?.role == 'admin'
+          ? const AdminBottomNav(currentIndex: 4)
+          : UserBottomNav(
+              currentItem: UserNavItem.profile,
+              onItemSelected: _onBottomNavSelected,
+            );
+    }
+
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       body: SafeArea(
-        child: _isLoading 
+        child: (_isLoading && _user == null) 
           ? const Center(child: CircularProgressIndicator())
           : Column(
           children: [
@@ -289,10 +369,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                       const SizedBox(height: 24),
                       _buildSecuritySection(),
                       const SizedBox(height: 24),
-                      _buildPreferencesSection(),
-                      const SizedBox(height: 24),
-                      _buildSmartFarmSection(),
-                      const SizedBox(height: 24),
                       _buildDangerSection(),
                       const SizedBox(height: 32),
                       _buildAppInfo(),
@@ -305,12 +381,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _user?.role == 'admin'
-          ? const AdminBottomNav(currentIndex: 4)
-          : UserBottomNav(
-              currentItem: UserNavItem.profile,
-              onItemSelected: _onBottomNavSelected,
-            ),
+      bottomNavigationBar: bottomNav,
     );
   }
 
@@ -491,94 +562,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           label: 'Đổi mật khẩu',
           onTap: _showChangePasswordDialog,
         ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsItem(
-          icon: Icons.shield_outlined,
-          label: 'Xác thực hai lớp',
-          onTap: () => _showSnackBar('Tính năng sắp ra mắt'),
-        ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsItem(
-          icon: Icons.devices_outlined,
-          label: 'Thiết bị đã đăng nhập',
-          onTap: () => _showSnackBar('Tính năng sắp ra mắt'),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPreferencesSection() {
-    return SettingsSection(
-      title: 'Tùy chỉnh ứng dụng',
-      children: [
-        SettingsToggleItem(
-          icon: Icons.dark_mode_outlined,
-          label: 'Chế độ tối',
-          value: _darkMode,
-          onChanged: (v) => setState(() => _darkMode = v),
-        ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsToggleItem(
-          icon: Icons.notifications_outlined,
-          label: 'Thông báo',
-          value: _notifications,
-          onChanged: (v) => setState(() => _notifications = v),
-        ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsItem(
-          icon: Icons.thermostat_outlined,
-          label: 'Đơn vị nhiệt độ',
-          value: '°C',
-          onTap: () => _showSnackBar('Đơn vị nhiệt độ'),
-        ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsItem(
-          icon: Icons.language,
-          label: 'Ngôn ngữ',
-          value: 'Tiếng Việt',
-          onTap: () => _showSnackBar('Ngôn ngữ'),
-        ),
-        const Divider(height: 1, indent: 68, color: AppColors.orderCardBorder),
-        SettingsToggleItem(
-          icon: Icons.sync,
-          label: 'Tự động đồng bộ',
-          value: _autoSync,
-          onChanged: (v) => setState(() => _autoSync = v),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSmartFarmSection() {
-    return SettingsSection(
-      title: 'Cài đặt nông trại thông minh',
-      children: [
-        _SmartFarmCard(
-          icon: Icons.water_drop_outlined,
-          badgeLabel: 'ĐANG HOẠT ĐỘNG',
-          badgeActive: true,
-          title: 'Ngưỡng độ ẩm mặc định',
-          subtitle: 'Duy trì khoảng 85% - 92%',
-          onTap: () => _showSnackBar('Ngưỡng độ ẩm mặc định'),
-        ),
-        const Divider(height: 1, indent: 17, color: AppColors.orderCardBorder),
-        _SmartFarmCard(
-          icon: Icons.thermostat_outlined,
-          badgeLabel: 'CHỈNH SỬA',
-          badgeActive: false,
-          title: 'Ngưỡng nhiệt độ mặc định',
-          subtitle: 'Cảnh báo khi > 28°C',
-          onTap: () => _showSnackBar('Ngưỡng nhiệt độ mặc định'),
-        ),
-        const Divider(height: 1, indent: 17, color: AppColors.orderCardBorder),
-        _SmartFarmCard(
-          icon: Icons.auto_mode,
-          badgeLabel: 'TỐI ƯU',
-          badgeActive: true,
-          title: 'Cài đặt tự động hóa',
-          subtitle: 'Chu trình thông minh quạt CO2',
-          onTap: () => _showSnackBar('Cài đặt tự động hóa'),
-        ),
       ],
     );
   }
@@ -625,70 +608,6 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
           textAlign: TextAlign.center,
         ),
       ],
-    );
-  }
-}
-
-class _SmartFarmCard extends StatelessWidget {
-  const _SmartFarmCard({
-    required this.icon,
-    required this.badgeLabel,
-    required this.badgeActive,
-    required this.title,
-    required this.subtitle,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String badgeLabel;
-  final bool badgeActive;
-  final String title;
-  final String subtitle;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.all(17),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Icon(icon, size: 20, color: AppColors.shopTextPrimary),
-                const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: badgeActive
-                        ? AppColors.alertGreenBg
-                        : AppColors.alertOfflineBg,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                  child: Text(
-                    badgeLabel,
-                    style: badgeActive
-                        ? AppTextStyles.settingsSmartFarmBadge
-                        : AppTextStyles.settingsSmartFarmBadgeInactive,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              title,
-              style: AppTextStyles.settingsItemLabel,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: AppTextStyles.settingsItemValue,
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

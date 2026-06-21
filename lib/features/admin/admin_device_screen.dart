@@ -159,7 +159,7 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
             onTap: () {},
           ),
           const SizedBox(width: 8),
-          AdminNotificationBell(badgeCount: 3),
+          const AdminNotificationBell(),
           const SizedBox(width: 8),
           _HeaderIconButton(
             icon: Icons.logout,

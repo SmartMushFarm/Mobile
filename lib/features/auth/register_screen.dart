@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/auth/widgets/register_form_card.dart';
@@ -39,33 +40,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await AuthService.register(
+      await AuthService.registerOTP(
         name: _nameController.text.trim(),
-        email: _emailController.text.trim(),
+        email: _emailController.text.trim().toLowerCase(),
         password: _passwordController.text,
         phone: _phoneController.text.trim(),
         address: _addressController.text.trim(),
       );
 
       if (!mounted) return;
-
       setState(() => _isLoading = false);
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Đăng ký thành công! Hãy đăng nhập.'),
-          behavior: SnackBarBehavior.floating,
-          backgroundColor: AppColors.primary,
-        ),
-      );
 
-      context.go('/login');
+      _showOTPDialog();
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       
       String message = 'Đăng ký thất bại. Vui lòng thử lại.';
-      if (e is Exception) {
+      if (e is DioException) {
+        if (e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.connectionTimeout) {
+          message = 'Máy chủ phản hồi chậm. Vui lòng kiểm tra kết nối mạng và thử lại.';
+        } else if (e.response?.statusCode == 409) {
+          message = 'Email này đã được sử dụng. Vui lòng chọn email khác.';
+        } else if (e.response?.data != null && e.response?.data is Map) {
+          message = e.response?.data['message'] ?? message;
+        }
+      } else if (e is Exception) {
         message = e.toString().replaceAll('Exception: ', '');
       }
       
@@ -77,6 +77,75 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       );
     }
+  }
+
+  void _showOTPDialog() {
+    final otpController = TextEditingController();
+    bool isVerifying = false;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: const Text('Xác thực Email'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và nhập mã vào đây.'),
+              const SizedBox(height: 16),
+              TextField(
+                controller: otpController,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 24, letterSpacing: 8, fontWeight: FontWeight.bold),
+                decoration: const InputDecoration(
+                  hintText: '123456',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isVerifying ? null : () => Navigator.pop(context),
+              child: const Text('Hủy'),
+            ),
+            ElevatedButton(
+              onPressed: isVerifying ? null : () async {
+                if (otpController.text.length < 6) return;
+                
+                setDialogState(() => isVerifying = true);
+                try {
+                  await AuthService.verifyRegistrationOTP(
+                    email: _emailController.text.trim().toLowerCase(),
+                    otp: otpController.text.trim(),
+                  );
+                  if (mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Xác thực thành công! Hãy đăng nhập.'),
+                        backgroundColor: AppColors.primary,
+                      ),
+                    );
+                    context.go('/login');
+                  }
+                } catch (e) {
+                  setDialogState(() => isVerifying = false);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Mã OTP không đúng hoặc đã hết hạn')),
+                  );
+                }
+              },
+              child: isVerifying 
+                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                : const Text('Xác nhận'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override

@@ -101,7 +101,13 @@ class _BoxTopBar extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.loginLabel),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),

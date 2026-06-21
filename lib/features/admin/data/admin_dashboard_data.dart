@@ -81,9 +81,11 @@ class AdminDashboardData {
   static const List<Map<String, dynamic>> actions = [
     {'label': 'Manage Products', 'icon': 'inventory_2', 'route': '/admin/products'},
     {'label': 'Manage Categories', 'icon': 'category', 'route': '/admin/categories'},
+    {'label': 'Manage Presets', 'icon': 'settings_input_component', 'route': '/admin/presets'},
+    {'label': 'Manage Promotions', 'icon': 'discount', 'route': '/admin/promotions'},
     {'label': 'Manage Orders', 'icon': 'receipt_long', 'route': '/admin/orders'},
     {'label': 'Manage Users', 'icon': 'people', 'route': '/admin/users'},
     {'label': 'OTA Firmware', 'icon': 'system_update', 'route': '/admin/devices'},
-    {'label': 'Notifications', 'icon': 'notifications', 'route': '/admin/alerts'},
+    {'label': 'Maintenance', 'icon': 'build', 'route': '/admin/maintenance'},
   ];
 }

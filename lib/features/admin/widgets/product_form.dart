@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
@@ -8,7 +9,7 @@ import 'package:smartmush_farmer/features/shop/models/category_model.dart';
 class ProductForm extends StatefulWidget {
   final ProductModel? product;
   final List<CategoryModel> categories;
-  final Function(Map<String, dynamic> data, File? image) onSubmit;
+  final Function(Map<String, dynamic> data, XFile? image) onSubmit;
 
   const ProductForm({
     super.key,
@@ -29,7 +30,8 @@ class _ProductFormState extends State<ProductForm> {
   late TextEditingController _stockController;
   int? _selectedCategoryId;
   String _status = 'active';
-  File? _imageFile;
+  XFile? _imageFile;
+  Uint8List? _webImage;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -55,9 +57,17 @@ class _ProductFormState extends State<ProductForm> {
   Future<void> _pickImage() async {
     final XFile? image = await _picker.pickImage(source: ImageSource.gallery);
     if (image != null) {
-      setState(() {
-        _imageFile = File(image.path);
-      });
+      if (kIsWeb) {
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _webImage = bytes;
+          _imageFile = image;
+        });
+      } else {
+        setState(() {
+          _imageFile = image;
+        });
+      }
     }
   }
 
@@ -90,15 +100,17 @@ class _ProductFormState extends State<ProductForm> {
                   decoration: BoxDecoration(
                     color: Colors.grey[200],
                     borderRadius: BorderRadius.circular(12),
-                    image: _imageFile != null
-                        ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
-                        : (widget.product?.imageUrl != null
-                            ? DecorationImage(image: NetworkImage(widget.product!.imageUrl!), fit: BoxFit.cover)
-                            : null),
                   ),
-                  child: _imageFile == null && widget.product?.imageUrl == null
-                      ? const Icon(Icons.add_a_photo, size: 50, color: Colors.grey)
-                      : null,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: _webImage != null
+                        ? Image.memory(_webImage!, fit: BoxFit.cover)
+                        : (_imageFile != null
+                            ? Image.file(File(_imageFile!.path), fit: BoxFit.cover)
+                            : (widget.product?.imageUrl != null
+                                ? Image.network(widget.product!.imageUrl!, fit: BoxFit.cover)
+                                : const Icon(Icons.add_a_photo, size: 50, color: Colors.grey))),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),

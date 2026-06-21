@@ -5,7 +5,7 @@ import '../../../core/config/api_config.dart';
 import '../models/user_model.dart';
 
 class AuthService {
-  static Future<Response> register({
+  static Future<Response> registerOTP({
     required String name,
     required String email,
     required String password,
@@ -13,12 +13,81 @@ class AuthService {
     required String address,
   }) async {
     try {
-      final response = await ApiClient.instance.post('/auth/register', data: {
+      final response = await ApiClient.instance.post('/auth/register-otp', data: {
         'name': name,
         'email': email,
         'password': password,
         'phone': phone,
         'address': address,
+      });
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> verifyRegistrationOTP({
+    required String email,
+    required String otp,
+  }) async {
+    try {
+      final response = await ApiClient.instance.post('/auth/verify-registration-otp', data: {
+        'email': email,
+        'otp': otp,
+      });
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> forgotPassword({
+    required String email,
+  }) async {
+    try {
+      final response = await ApiClient.instance.post('/auth/forgot-password', data: {
+        'email': email,
+      });
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> resetPasswordOTP({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await ApiClient.instance.post('/auth/reset-password-otp', data: {
+        'email': email,
+        'otp': otp,
+        'new_password': newPassword,
+      });
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> requestChangePasswordOTP() async {
+    try {
+      final response = await ApiClient.instance.post('/auth/request-change-password-otp');
+      return response;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  static Future<Response> changePasswordOTP({
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      final response = await ApiClient.instance.put('/auth/change-password-otp', data: {
+        'otp': otp,
+        'new_password': newPassword,
       });
       return response;
     } catch (e) {

@@ -18,6 +18,8 @@ class PaymentMethodCard extends StatelessWidget {
     switch (method) {
       case PaymentMethod.cod:
         return Icons.payments_outlined;
+      case PaymentMethod.payOS:
+        return Icons.qr_code_scanner_outlined;
       case PaymentMethod.bankTransfer:
         return Icons.account_balance_outlined;
       case PaymentMethod.creditCard:

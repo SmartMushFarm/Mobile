@@ -6,7 +6,11 @@ import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
 import 'package:smartmush_farmer/features/shop/models/cart_model.dart';
 import 'package:smartmush_farmer/features/shop/data/cart_api_service.dart';
 import 'package:smartmush_farmer/features/shop/data/order_api_service.dart';
+import 'package:smartmush_farmer/features/shop/data/payment_api_service.dart';
+import 'package:smartmush_farmer/features/shop/data/promotion_api_service.dart';
+import 'package:smartmush_farmer/features/admin/models/promotion_model.dart';
 import 'package:smartmush_farmer/features/shop/models/checkout_item.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:smartmush_farmer/features/shop/widgets/checkout_section_card.dart';
 import 'package:smartmush_farmer/features/shop/widgets/delivery_method_card.dart';
 import 'package:smartmush_farmer/features/shop/widgets/payment_method_card.dart';
@@ -26,7 +30,11 @@ class CheckoutScreen extends StatefulWidget {
 class _CheckoutScreenState extends State<CheckoutScreen> {
   final CartApiService _cartService = CartApiService();
   final OrderApiService _orderService = OrderApiService();
+  final PaymentApiService _paymentService = PaymentApiService();
+  final PromotionApiService _promotionService = PromotionApiService();
+  
   CartModel? _cart;
+  PromotionModel? _appliedPromotion;
   bool _isLoading = true;
   bool _isPlacingOrder = false;
 
@@ -72,24 +80,57 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
   CheckoutSummary get _summary {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
     double subtotal = _cart?.totalAmount ?? 0;
-    double shipping = _selectedDelivery == DeliveryMethod.standard ? 35000 : 55000;
-    double tax = (subtotal * 0.05);
-    double total = subtotal + shipping + tax;
+    double shipping = 0; // Miễn phí vận chuyển
+    
+    double discount = 0;
+    if (_appliedPromotion != null) {
+      discount = subtotal * (_appliedPromotion!.discountPercent / 100);
+    }
+    
+    double tax = (subtotal - discount) * 0.05;
+    double total = subtotal + shipping + tax - discount;
     
     return CheckoutSummary(
       subtotal: currencyFormat.format(subtotal),
-      shipping: currencyFormat.format(shipping),
+      shipping: 'Miễn phí',
+      discount: currencyFormat.format(discount),
       tax: currencyFormat.format(tax),
       total: currencyFormat.format(total),
     );
   }
 
-  void _onApplyPromo() {
+  Future<void> _onApplyPromo() async {
     final code = _promoController.text.trim();
     if (code.isEmpty) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final promotion = await _promotionService.checkPromotion(code);
+      if (mounted) {
+        setState(() {
+          _appliedPromotion = promotion;
+          _isLoading = false;
+        });
+        if (promotion != null) {
+          _showSnackBar('Mã giảm giá "${promotion.discountPercent}%" đã được áp dụng');
+        } else {
+          _showSnackBar('Mã giảm giá không hợp lệ hoặc đã hết hạn', isError: true);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoading = false);
+        _showSnackBar('Lỗi kiểm tra mã giảm giá', isError: true);
+      }
+    }
+  }
+
+  void _showSnackBar(String message, {bool isError = false}) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Mã "$code" đã được áp dụng'),
+        content: Text(message),
+        backgroundColor: isError ? Colors.red : AppColors.primary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -108,6 +149,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       final order = await _orderService.checkout(
         shippingAddress: _addressController.text.trim(),
         paymentMethod: _selectedPayment == PaymentMethod.cod ? 'COD' : 'QR',
+        promotionId: _appliedPromotion?.id,
       );
       
       if (mounted) {
@@ -120,6 +162,33 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             ),
           );
           context.push('/shop/order-history');
+        } else if (_selectedPayment == PaymentMethod.payOS) {
+          // PayOS Flow
+          final checkoutUrl = await _paymentService.createPayOSPayment(order.id);
+          
+          if (checkoutUrl.isNotEmpty) {
+            final uri = Uri.parse(checkoutUrl);
+            try {
+              // Mở bằng trình duyệt ngoài để hỗ trợ Deep Link quay lại app (smartmushfarm://)
+              final launched = await launchUrl(
+                uri,
+                mode: LaunchMode.externalApplication,
+              );
+              
+              if (mounted) {
+                if (launched) {
+                  // Chuyển sang trang lịch sử đơn hàng để khi quay lại app người dùng thấy đơn hàng
+                  context.pushReplacement('/shop/order-history');
+                } else {
+                  _showSnackBar('Không thể mở cửa sổ thanh toán. Vui lòng thử lại.', isError: true);
+                }
+              }
+            } catch (e) {
+              _showSnackBar('Lỗi: ${e.toString()}', isError: true);
+            }
+          } else {
+            if (mounted) _showSnackBar('Lỗi: Hệ thống không tạo được link thanh toán', isError: true);
+          }
         } else {
           context.push('/shop/payment', extra: {
             'orderId': order.id,
@@ -453,6 +522,13 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         children: [
           _BreakdownRow(label: 'Tạm tính', value: s.subtotal),
           const SizedBox(height: 12),
+          if (_appliedPromotion != null) ...[
+            _BreakdownRow(
+              label: 'Giảm giá (${_appliedPromotion!.discountPercent}%)',
+              value: '- ${s.discount}',
+            ),
+            const SizedBox(height: 12),
+          ],
           _BreakdownRow(label: 'Phí vận chuyển', value: s.shipping),
           const SizedBox(height: 12),
           _BreakdownRow(label: 'Thuế', value: s.tax),
@@ -530,12 +606,14 @@ class CheckoutSummary {
   const CheckoutSummary({
     required this.subtotal,
     required this.shipping,
+    required this.discount,
     required this.tax,
     required this.total,
   });
 
   final String subtotal;
   final String shipping;
+  final String discount;
   final String tax;
   final String total;
 }

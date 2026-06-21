@@ -5,6 +5,7 @@ import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/app_primary_button.dart';
 import 'package:smartmush_farmer/core/widgets/app_text_field.dart';
 import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
 import 'package:smartmush_farmer/features/user/services/preset_service.dart';
 
 class CreatePresetScreen extends StatefulWidget {
@@ -20,6 +21,8 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
   final _formKey = GlobalKey<FormState>();
   final _presetService = PresetService();
   bool _isLoading = false;
+  bool _isAdmin = false;
+  bool _isRecommended = false;
 
   late final TextEditingController _nameController;
   late final TextEditingController _typeController;
@@ -54,6 +57,20 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
     _maxTempController = TextEditingController(text: (p?['max_temp_danger'] ?? '35').toString());
     _pulseOnController = TextEditingController(text: (p?['mist_pulse_on_seconds'] ?? '10').toString());
     _pulseOffController = TextEditingController(text: (p?['mist_pulse_off_seconds'] ?? '60').toString());
+    _isRecommended = (p?['is_recommended'] == true || p?['is_recommended'] == 1);
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final userMap = await AuthService.getCurrentUser();
+    if (userMap != null) {
+      final user = UserModel.fromJson(userMap);
+      if (mounted) {
+        setState(() {
+          _isAdmin = (user.role ?? '').toLowerCase() == 'admin';
+        });
+      }
+    }
   }
 
   @override
@@ -111,7 +128,7 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
         'max_temp_danger': double.parse(_maxTempController.text),
         'mist_pulse_on_seconds': int.parse(_pulseOnController.text),
         'mist_pulse_off_seconds': int.parse(_pulseOffController.text),
-        'is_recommended': widget.preset?['is_recommended'] ?? false,
+        'is_recommended': _isAdmin ? _isRecommended : (widget.preset?['is_recommended'] ?? false),
         'description': _descController.text.trim(),
       };
 
@@ -210,6 +227,16 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
                   Expanded(child: AppTextField(label: 'Thời gian nghỉ (giây)', controller: _pulseOffController, keyboardType: TextInputType.number, hintText: 'Số giây nghỉ')),
                 ],
               ),
+              if (_isAdmin) ...[
+                const SizedBox(height: 24),
+                SwitchListTile(
+                  title: Text('Đặt làm Preset hệ thống (Được gợi ý)', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+                  subtitle: const Text('Preset này sẽ hiển thị cho tất cả người dùng.'),
+                  value: _isRecommended,
+                  activeColor: AppColors.primary,
+                  onChanged: (v) => setState(() => _isRecommended = v),
+                ),
+              ],
               const SizedBox(height: 32),
               AppPrimaryButton(label: isEditing ? 'Cập nhật Preset' : 'Lưu Preset', isLoading: _isLoading, onPressed: _handleSave),
               const SizedBox(height: 40),

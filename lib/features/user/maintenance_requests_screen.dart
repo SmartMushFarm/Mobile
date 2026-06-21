@@ -3,53 +3,90 @@ import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
 import 'package:smartmush_farmer/features/user/models/maintenance_ticket.dart';
+import 'package:smartmush_farmer/features/user/services/maintenance_service.dart';
 import 'package:smartmush_farmer/features/user/widgets/maintenance_ticket_card.dart';
 
-class MaintenanceRequestsScreen extends StatelessWidget {
+class MaintenanceRequestsScreen extends StatefulWidget {
   const MaintenanceRequestsScreen({super.key});
 
-  static const _mockTickets = [
-    MaintenanceTicket(
-      id: 'MT-102',
-      deviceName: 'Hộp Nấm Số 1',
-      issue: 'Quạt kêu to',
-      description: 'Quạt hút bên trái phát ra tiếng ồn bất thường khi hoạt động.',
-      submittedDate: 'Hôm nay, 09:30',
-      status: MaintenanceStatus.pending,
-    ),
-    MaintenanceTicket(
-      id: 'MT-098',
-      deviceName: 'Hộp Nấm Số 2',
-      issue: 'Cảm biến độ ẩm lỗi',
-      description: 'Giá trị đọc bị kẹt ở 99% dù thực tế đã thấp hơn.',
-      submittedDate: 'Hôm qua',
-      status: MaintenanceStatus.accepted,
-    ),
-    MaintenanceTicket(
-      id: 'MT-097',
-      deviceName: 'Hộp Nấm Số 3',
-      issue: 'Đèn LED không phản hồi',
-      description: 'Dải LED phổ đỏ đang nhấp nháy bất thường trong quá trình vận hành.',
-      submittedDate: '15/05/2026',
-      status: MaintenanceStatus.technicianAssigned,
-    ),
-    MaintenanceTicket(
-      id: 'MT-071',
-      deviceName: 'Hộp Nấm Số 2',
-      issue: 'Lỗi kết nối nguồn điện',
-      description: 'Cổng nguồn phía sau cảm thấy lỏng lẽo khi cắm vào.',
-      submittedDate: '08/05/2026',
-      status: MaintenanceStatus.completed,
-    ),
-  ];
+  @override
+  State<MaintenanceRequestsScreen> createState() => _MaintenanceRequestsScreenState();
+}
 
-  void _showDetailSnackBar(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Chi tiết yêu cầu sẽ được cập nhật sau'),
-        behavior: SnackBarBehavior.floating,
+class _MaintenanceRequestsScreenState extends State<MaintenanceRequestsScreen> {
+  final MaintenanceService _maintenanceService = MaintenanceService();
+  List<MaintenanceTicket> _tickets = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  String _selectedFilter = 'Tất cả';
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchTickets();
+  }
+
+  Future<void> _fetchTickets() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final tickets = await _maintenanceService.getMyRequests();
+      if (mounted) {
+        setState(() {
+          _tickets = tickets;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _errorMessage = 'Không thể tải danh sách yêu cầu';
+        });
+      }
+    }
+  }
+
+  Future<void> _handleCancelRequest(MaintenanceTicket ticket) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Hủy yêu cầu'),
+        content: Text('Bạn có chắc chắn muốn hủy yêu cầu "${ticket.title}" không?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Đóng'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Hủy yêu cầu'),
+          ),
+        ],
       ),
     );
+
+    if (confirmed == true) {
+      try {
+        final ticketId = int.tryParse(ticket.id) ?? 0;
+        await _maintenanceService.cancelRequest(ticketId);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Đã hủy yêu cầu thành công')),
+          );
+          _fetchTickets();
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi: ${e.toString()}')),
+          );
+        }
+      }
+    }
   }
 
   void _onBottomNavSelected(BuildContext context, UserNavItem item) {
@@ -65,19 +102,29 @@ class MaintenanceRequestsScreen extends StatelessWidget {
     }
   }
 
+  List<MaintenanceTicket> get _filteredTickets {
+    if (_selectedFilter == 'Đang xử lý') {
+      return _tickets.where((t) => 
+        t.status == MaintenanceStatus.pending || 
+        t.status == MaintenanceStatus.received || 
+        t.status == MaintenanceStatus.processing ||
+        t.status == MaintenanceStatus.waitingConfirmation
+      ).toList();
+    } else if (_selectedFilter == 'Hoàn thành') {
+      return _tickets.where((t) => t.status == MaintenanceStatus.completed).toList();
+    }
+    return _tickets;
+  }
+
   @override
   Widget build(BuildContext context) {
-    final pendingCount = _mockTickets
-        .where((t) => t.status == MaintenanceStatus.pending)
-        .length;
-    final processingCount = _mockTickets
-        .where((t) =>
-            t.status == MaintenanceStatus.accepted ||
-            t.status == MaintenanceStatus.technicianAssigned)
-        .length;
-    final completedCount = _mockTickets
-        .where((t) => t.status == MaintenanceStatus.completed)
-        .length;
+    final pendingCount = _tickets.where((t) => t.status == MaintenanceStatus.pending).length;
+    final processingCount = _tickets.where((t) => 
+      t.status == MaintenanceStatus.received || 
+      t.status == MaintenanceStatus.processing ||
+      t.status == MaintenanceStatus.waitingConfirmation
+    ).length;
+    final completedCount = _tickets.where((t) => t.status == MaintenanceStatus.completed).length;
 
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
@@ -86,41 +133,59 @@ class MaintenanceRequestsScreen extends StatelessWidget {
           children: [
             _buildHeader(context),
             Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 16),
-                    Text(
-                      'Bảo trì',
-                      style: AppTextStyles.registerTitle.copyWith(
-                        fontSize: 22,
-                        color: AppColors.shopTextPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Theo dõi và quản lý yêu cầu hỗ trợ thiết bị',
-                      style: AppTextStyles.loginSubtitle,
-                    ),
-                    const SizedBox(height: 16),
-                    _buildFilterChips(),
-                    const SizedBox(height: 20),
-                    _buildSummaryCards(pendingCount, processingCount, completedCount),
-                    const SizedBox(height: 20),
-                    ...List.generate(_mockTickets.length, (index) {
-                      final ticket = _mockTickets[index];
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: MaintenanceTicketCard(
-                          ticket: ticket,
-                          onTap: () => _showDetailSnackBar(context),
+              child: RefreshIndicator(
+                onRefresh: _fetchTickets,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 16),
+                      Text(
+                        'Bảo trì',
+                        style: AppTextStyles.registerTitle.copyWith(
+                          fontSize: 22,
+                          color: AppColors.shopTextPrimary,
                         ),
-                      );
-                    }),
-                    const SizedBox(height: 80),
-                  ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Theo dõi và quản lý yêu cầu hỗ trợ thiết bị',
+                        style: AppTextStyles.loginSubtitle,
+                      ),
+                      const SizedBox(height: 16),
+                      _buildFilterChips(),
+                      const SizedBox(height: 20),
+                      _buildSummaryCards(pendingCount, processingCount, completedCount),
+                      const SizedBox(height: 20),
+                      if (_isLoading)
+                        const Center(child: Padding(
+                          padding: EdgeInsets.only(top: 40),
+                          child: CircularProgressIndicator(),
+                        ))
+                      else if (_errorMessage != null)
+                        Center(child: Padding(
+                          padding: const EdgeInsets.only(top: 40),
+                          child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                        ))
+                      else if (_filteredTickets.isEmpty)
+                        const Center(child: Padding(
+                          padding: EdgeInsets.only(top: 40),
+                          child: Text('Chưa có yêu cầu nào.'),
+                        ))
+                      else
+                        ..._filteredTickets.map((ticket) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: MaintenanceTicketCard(
+                            ticket: ticket,
+                            onTap: () {},
+                            onCancel: () => _handleCancelRequest(ticket),
+                          ),
+                        )),
+                      const SizedBox(height: 80),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -128,7 +193,7 @@ class MaintenanceRequestsScreen extends StatelessWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/maintenance/create'),
+        onPressed: () => context.push('/maintenance/create').then((_) => _fetchTickets()),
         backgroundColor: AppColors.primary,
         elevation: 4,
         icon: const Icon(Icons.add, color: Color(0xFF003C0B)),
@@ -153,7 +218,13 @@ class MaintenanceRequestsScreen extends StatelessWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.loginLabel),
-            onPressed: () => context.go('/profile'),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/profile');
+              }
+            },
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -169,9 +240,8 @@ class MaintenanceRequestsScreen extends StatelessWidget {
           ),
           const Spacer(),
           IconButton(
-            icon: const Icon(Icons.notifications_outlined,
-                color: AppColors.shopPrice),
-            onPressed: () {},
+            icon: const Icon(Icons.refresh, color: AppColors.shopPrice),
+            onPressed: _fetchTickets,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(),
           ),
@@ -181,17 +251,30 @@ class MaintenanceRequestsScreen extends StatelessWidget {
   }
 
   Widget _buildFilterChips() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _FilterChip(label: 'Tất cả', isActive: true),
-          const SizedBox(width: 8),
-          _FilterChip(label: 'Đang xử lý', isActive: false),
-          const SizedBox(width: 8),
-          _FilterChip(label: 'Hoàn thành', isActive: false),
-        ],
-      ),
+    return Row(
+      children: ['Tất cả', 'Đang xử lý', 'Hoàn thành'].map((label) {
+        final isActive = _selectedFilter == label;
+        return Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: GestureDetector(
+            onTap: () => setState(() => _selectedFilter = label),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+              decoration: BoxDecoration(
+                color: isActive ? AppColors.shopPrice : const Color(0xFFEFEDED),
+                borderRadius: BorderRadius.circular(999),
+                border: isActive ? null : Border.all(color: AppColors.shopCategoryBorder.withValues(alpha: 0.3)),
+              ),
+              child: Text(
+                label,
+                style: AppTextStyles.maintenanceFilterChip.copyWith(
+                  color: isActive ? Colors.white : AppColors.shopTextSecondary,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
     );
   }
 
@@ -220,35 +303,6 @@ class MaintenanceRequestsScreen extends StatelessWidget {
   }
 }
 
-class _FilterChip extends StatelessWidget {
-  const _FilterChip({required this.label, required this.isActive});
-
-  final String label;
-  final bool isActive;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
-      decoration: BoxDecoration(
-        color: isActive ? AppColors.shopPrice : const Color(0xFFEFEDED),
-        borderRadius: BorderRadius.circular(999),
-        border: isActive
-            ? null
-            : Border.all(
-                color: AppColors.shopCategoryBorder.withValues(alpha: 0.3),
-              ),
-      ),
-      child: Text(
-        label,
-        style: AppTextStyles.maintenanceFilterChip.copyWith(
-          color: isActive ? Colors.white : AppColors.shopTextSecondary,
-        ),
-      ),
-    );
-  }
-}
-
 class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.value,
@@ -269,13 +323,6 @@ class _SummaryCard extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: AppColors.orderCardBorder),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x0D4CAF50),
-              blurRadius: 2,
-              offset: Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           children: [

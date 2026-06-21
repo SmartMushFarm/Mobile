@@ -199,7 +199,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
               ),
             ),
           ),
-          AdminNotificationBell(badgeCount: 3),
+          const AdminNotificationBell(),
           const SizedBox(width: 8),
           _HeaderIconButton(
             icon: Icons.logout,

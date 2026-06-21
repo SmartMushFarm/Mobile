@@ -25,7 +25,13 @@ class AdminAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: showBack
           ? IconButton(
               icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-              onPressed: () => context.pop(),
+              onPressed: () {
+                if (context.canPop()) {
+                  context.pop();
+                } else {
+                  context.go('/admin');
+                }
+              },
             )
           : Padding(
               padding: const EdgeInsets.only(left: 16),
