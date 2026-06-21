@@ -249,7 +249,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
               ),
             ),
           ),
-          AdminNotificationBell(badgeCount: 3),
+          const AdminNotificationBell(),
           const SizedBox(width: 8),
           _HeaderIconButton(
             icon: Icons.logout,

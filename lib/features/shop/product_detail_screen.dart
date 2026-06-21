@@ -21,6 +21,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   final ShopApiService _apiService = ShopApiService();
   final CartApiService _cartService = CartApiService();
   ProductModel? _product;
+  List<ProductModel> _recommendedProducts = [];
   bool _isLoading = true;
   bool _isAddingToCart = false;
   String? _error;
@@ -39,8 +40,22 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     });
     try {
       final product = await _apiService.getProductById(widget.productId);
+      
+      // Load recommended products (same category)
+      List<ProductModel> recommended = [];
+      try {
+        final allProducts = await _apiService.getProducts();
+        recommended = allProducts
+            .where((p) => p.categoryId == product.categoryId && p.id != product.id)
+            .take(5)
+            .toList();
+      } catch (e) {
+        debugPrint('Error loading recommended products: $e');
+      }
+
       setState(() {
         _product = product;
+        _recommendedProducts = recommended;
         _isLoading = false;
       });
     } catch (e) {
@@ -133,7 +148,10 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                                             const SizedBox(height: 20),
                                             _buildQuantitySelector(),
                                             const SizedBox(height: 24),
-                                            const _RecommendedSection(),
+                                            if (_recommendedProducts.isNotEmpty)
+                                              _RecommendedSection(
+                                                products: _recommendedProducts,
+                                              ),
                                             const SizedBox(height: 100),
                                           ],
                                         ),
@@ -503,28 +521,8 @@ class _QuantityButton extends StatelessWidget {
 }
 
 class _RecommendedSection extends StatelessWidget {
-  const _RecommendedSection();
-
-  static const _recommended = [
-    (
-      name: 'Cảm biến độ ẩm',
-      price: '990.000đ',
-      imageUrl:
-          'https://www.figma.com/api/mcp/asset/be93343e-0e8c-423a-b563-f5fcd02fd193',
-    ),
-    (
-      name: 'Vòi phun sương Pro',
-      price: '590.000đ',
-      imageUrl:
-          'https://www.figma.com/api/mcp/asset/0270cf31-e61a-4031-b867-8dbfe7df5273',
-    ),
-    (
-      name: 'Theo dõi CO2',
-      price: '1.890.000đ',
-      imageUrl:
-          'https://www.figma.com/api/mcp/asset/541eb925-261f-4640-9d1b-1181c7c656eb',
-    ),
-  ];
+  const _RecommendedSection({required this.products});
+  final List<ProductModel> products;
 
   @override
   Widget build(BuildContext context) {
@@ -532,7 +530,7 @@ class _RecommendedSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Gợi ý cho bạn',
+          'Sản phẩm tương tự',
           style: AppTextStyles.shopSectionTitle,
         ),
         const SizedBox(height: 12),
@@ -540,15 +538,18 @@ class _RecommendedSection extends StatelessWidget {
           height: 200,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: _recommended.length,
+            itemCount: products.length,
             separatorBuilder: (c, i) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
-              final item = _recommended[index];
+              final product = products[index];
+              final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
               return _RecommendedCard(
-                name: item.name,
-                price: item.price,
-                imageUrl: item.imageUrl,
-                onTap: () {},
+                name: product.name,
+                price: currencyFormat.format(product.price),
+                imageUrl: product.imageUrl ?? '',
+                onTap: () {
+                  context.pushReplacement('/shop/product-detail', extra: product.id);
+                },
               );
             },
           ),

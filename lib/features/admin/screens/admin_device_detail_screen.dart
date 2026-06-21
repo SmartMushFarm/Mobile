@@ -97,6 +97,7 @@ class _AdminDeviceDetailScreenState extends State<AdminDeviceDetailScreen> {
                           _InfoItem('Trạng thái Quạt', _device!['fan_status']?.toString().toUpperCase() ?? 'OFF'),
                           _InfoItem('Trạng thái Phun sương', _device!['mist_status']?.toString().toUpperCase() ?? 'OFF'),
                           _InfoItem('Trạng thái Sưởi', _device!['heater_status']?.toString().toUpperCase() ?? 'OFF'),
+                          _InfoItem('Trạng thái Đèn', _device!['light_status']?.toString().toUpperCase() ?? 'OFF'),
                         ],
                       ),
                       const SizedBox(height: 16),

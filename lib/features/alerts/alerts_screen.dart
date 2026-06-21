@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
 import 'package:smartmush_farmer/features/alerts/models/alert_item.dart';
 import 'package:smartmush_farmer/features/alerts/widgets/alert_card.dart';
 import 'package:smartmush_farmer/features/alerts/widgets/alert_summary_card.dart';
+import 'package:smartmush_farmer/features/alerts/services/notification_service.dart';
+import 'package:smartmush_farmer/features/alerts/models/notification_model.dart';
 
 class AlertsScreen extends StatefulWidget {
   const AlertsScreen({super.key});
@@ -14,90 +17,171 @@ class AlertsScreen extends StatefulWidget {
 }
 
 class _AlertsScreenState extends State<AlertsScreen> {
-  final List<AlertItem> _alerts = [
-    const AlertItem(
-      id: '1',
-      title: 'Nhiệt độ quá cao',
-      description: 'Hộp Nấm Số 1 vượt quá 35°C.',
-      timestamp: '2 phút trước',
-      severity: AlertSeverity.critical,
-      icon: Icons.warning_amber_rounded,
-      isRead: false,
-      hasViewBox: true,
-      boxId: 'box-1',
-    ),
-    const AlertItem(
-      id: '2',
-      title: 'Độ ẩm giảm dưới 70%',
-      description: 'Tự động hóa đã kích hoạt hệ thống phun sương.',
-      timestamp: '15 phút trước',
-      severity: AlertSeverity.warning,
-      icon: Icons.water_drop_outlined,
-      isRead: false,
-      automationBadge: 'TỰ ĐỘNG HÓA ĐÃ KÍCH HOẠT',
-    ),
-    const AlertItem(
-      id: '3',
-      title: 'Hệ thống phun sương đã bật',
-      description: 'Đang ổn định môi trường trồng.',
-      timestamp: '1 giờ trước',
-      severity: AlertSeverity.automation,
-      icon: Icons.cloud_outlined,
-      isRead: true,
-    ),
-    const AlertItem(
-      id: '4',
-      title: 'Hộp Nấm Số 2 mất kết nối',
-      description: 'Đang thử kết nối lại...',
-      timestamp: '2 giờ trước',
-      severity: AlertSeverity.device,
-      icon: Icons.wifi_off,
-      isRead: false,
-    ),
-    const AlertItem(
-      id: '5',
-      title: 'Yêu cầu bảo trì đang được xử lý',
-      description: 'Kỹ thuật viên đã nhận yêu cầu.',
-      timestamp: '4 giờ trước',
-      severity: AlertSeverity.maintenance,
-      icon: Icons.build_outlined,
-      isRead: true,
-    ),
-    const AlertItem(
-      id: '6',
-      title: 'Đơn hàng phôi nấm đã được giao',
-      description: 'Mã vận đơn: SM-8829-XJ',
-      timestamp: 'Hôm qua',
-      severity: AlertSeverity.info,
-      icon: Icons.inventory_2_outlined,
-      isRead: true,
-    ),
-  ];
+  final NotificationService _notificationService = NotificationService();
+  List<NotificationModel> _notifications = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  int _unreadCount = 0;
 
-  int get _activeCount => _alerts.where((a) => !a.isRead).length;
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-  void _markAllRead() {
+  Future<void> _loadData() async {
     setState(() {
-      for (int i = 0; i < _alerts.length; i++) {
-        _alerts[i] = AlertItem(
-          id: _alerts[i].id,
-          title: _alerts[i].title,
-          description: _alerts[i].description,
-          timestamp: _alerts[i].timestamp,
-          severity: _alerts[i].severity,
-          icon: _alerts[i].icon,
-          isRead: true,
-          hasViewBox: _alerts[i].hasViewBox,
-          boxId: _alerts[i].boxId,
-          automationBadge: _alerts[i].automationBadge,
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final results = await Future.wait([
+        _notificationService.getNotifications(page: 1, limit: 50),
+        _notificationService.getUnreadCount(),
+      ]);
+
+      final notificationData = results[0] as Map<String, dynamic>;
+      final unreadCount = results[1] as int;
+
+      List list = [];
+      if (notificationData['data'] is List) {
+        list = notificationData['data'];
+      } else if (notificationData['notifications'] is List) {
+        list = notificationData['notifications'];
+      }
+
+      setState(() {
+        _notifications = list.map((json) => NotificationModel.fromJson(json)).toList();
+        _unreadCount = unreadCount;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = e.toString();
+      });
+    }
+  }
+
+  Future<void> _markAllRead() async {
+    try {
+      await _notificationService.markAllAsRead();
+      await _loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đã đánh dấu tất cả là đã đọc'),
+            behavior: SnackBarBehavior.floating,
+          ),
         );
       }
-    });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Đã đánh dấu tất cả là đã đọc'),
-        behavior: SnackBarBehavior.floating,
-      ),
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Lỗi: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _markAsRead(int id) async {
+    try {
+      await _notificationService.markAsRead(id);
+      // Update local state for better UX
+      setState(() {
+        final index = _notifications.indexWhere((n) => n.id == id);
+        if (index != -1) {
+          final n = _notifications[index];
+          _notifications[index] = NotificationModel(
+            id: n.id,
+            userId: n.userId,
+            deviceId: n.deviceId,
+            type: n.type,
+            title: n.title,
+            message: n.message,
+            isRead: true,
+            createdAt: n.createdAt,
+            updatedAt: n.updatedAt,
+          );
+          _unreadCount = (_unreadCount - 1).clamp(0, 999);
+        }
+      });
+    } catch (e) {
+      // Silent fail or show error
+    }
+  }
+
+  Future<void> _deleteNotification(int id) async {
+    try {
+      await _notificationService.deleteNotification(id);
+      setState(() {
+        _notifications.removeWhere((n) => n.id == id);
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Không thể xóa thông báo: $e')),
+        );
+      }
+    }
+  }
+
+  AlertItem _convertToAlertItem(NotificationModel n) {
+    AlertSeverity severity = AlertSeverity.info;
+    IconData icon = Icons.info_outline;
+
+    switch (n.type.toLowerCase()) {
+      case 'critical':
+      case 'danger':
+        severity = AlertSeverity.critical;
+        icon = Icons.warning_amber_rounded;
+        break;
+      case 'warning':
+        severity = AlertSeverity.warning;
+        icon = Icons.warning_amber_rounded;
+        break;
+      case 'automation':
+        severity = AlertSeverity.automation;
+        icon = Icons.auto_mode;
+        break;
+      case 'maintenance':
+        severity = AlertSeverity.maintenance;
+        icon = Icons.build_outlined;
+        break;
+      case 'device':
+        severity = AlertSeverity.device;
+        icon = Icons.sensors;
+        break;
+      default:
+        severity = AlertSeverity.info;
+        icon = Icons.notifications_none;
+    }
+
+    String timestamp = 'Vừa xong';
+    if (n.createdAt != null) {
+      final now = DateTime.now();
+      final diff = now.difference(n.createdAt!);
+      if (diff.inMinutes < 1) {
+        timestamp = 'Vừa xong';
+      } else if (diff.inHours < 1) {
+        timestamp = '${diff.inMinutes} phút trước';
+      } else if (diff.inDays < 1) {
+        timestamp = '${diff.inHours} giờ trước';
+      } else {
+        timestamp = DateFormat('dd/MM').format(n.createdAt!);
+      }
+    }
+
+    return AlertItem(
+      id: n.id.toString(),
+      title: n.title,
+      description: n.message,
+      timestamp: timestamp,
+      severity: severity,
+      icon: icon,
+      isRead: n.isRead,
+      hasViewBox: n.deviceId != null,
+      boxId: n.deviceId?.toString(),
     );
   }
 
@@ -124,18 +208,64 @@ class _AlertsScreenState extends State<AlertsScreen> {
             _buildHeader(),
             _buildSummaryCards(),
             Expanded(
-              child: ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                itemCount: _alerts.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final alert = _alerts[index];
-                  return AlertCard(
-                    alert: alert,
-                    onMarkRead: () => _markAllRead(),
-                  );
-                },
-              ),
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text('Lỗi: $_errorMessage'),
+                              ElevatedButton(
+                                onPressed: _loadData,
+                                child: const Text('Thử lại'),
+                              ),
+                            ],
+                          ),
+                        )
+                      : _notifications.isEmpty
+                          ? const Center(child: Text('Không có thông báo nào'))
+                          : RefreshIndicator(
+                              onRefresh: _loadData,
+                              child: ListView.separated(
+                                padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+                                itemCount: _notifications.length,
+                                separatorBuilder: (context, index) => const SizedBox(height: 12),
+                                itemBuilder: (context, index) {
+                                  final notification = _notifications[index];
+                                  return GestureDetector(
+                                    onTap: () {
+                                      if (!notification.isRead && notification.id != null) {
+                                        _markAsRead(notification.id!);
+                                      }
+                                    },
+                                    child: Dismissible(
+                                      key: Key(notification.id.toString()),
+                                      direction: DismissDirection.endToStart,
+                                      background: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(right: 20),
+                                        color: Colors.red,
+                                        child: const Icon(Icons.delete, color: Colors.white),
+                                      ),
+                                      onDismissed: (_) {
+                                        if (notification.id != null) {
+                                          _deleteNotification(notification.id!);
+                                        }
+                                      },
+                                      child: AlertCard(
+                                        alert: _convertToAlertItem(notification),
+                                        onMarkRead: () {
+                                          if (notification.id != null) {
+                                            _markAsRead(notification.id!);
+                                          }
+                                        },
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
             ),
           ],
         ),
@@ -183,25 +313,60 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ],
           ),
           const Spacer(),
+          // Delete all button
+          if (_notifications.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined, color: Colors.redAccent, size: 22),
+              onPressed: () => _showDeleteAllConfirm(),
+            ),
           // Mark all read button
           GestureDetector(
-            onTap: _markAllRead,
+            onTap: _unreadCount > 0 ? _markAllRead : null,
             child: Text(
               'Đánh dấu đã đọc',
               style: AppTextStyles.alertSummaryLabel.copyWith(
-                color: AppColors.shopPrice,
+                color: _unreadCount > 0 ? AppColors.shopPrice : Colors.grey,
               ),
             ),
           ),
           const SizedBox(width: 16),
           // Filter icon
           GestureDetector(
-            onTap: () {},
+            onTap: _loadData,
             child: const Icon(
-              Icons.filter_list,
+              Icons.refresh,
               color: AppColors.shopPrice,
               size: 22,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteAllConfirm() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Xóa tất cả?'),
+        content: const Text('Bạn có chắc muốn xóa tất cả thông báo?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                await _notificationService.deleteAllNotifications();
+                await _loadData();
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Lỗi: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Xóa hết', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -214,24 +379,24 @@ class _AlertsScreenState extends State<AlertsScreen> {
       child: Row(
         children: [
           AlertSummaryCard(
-            label: 'Đang hoạt động',
-            value: '$_activeCount',
-            icon: Icons.warning_amber_rounded,
+            label: 'Chưa đọc',
+            value: '$_unreadCount',
+            icon: Icons.notifications_active_outlined,
             iconBgColor: AppColors.alertRedBg,
             onTap: () {},
           ),
           const SizedBox(width: 12),
           AlertSummaryCard(
-            label: 'Thiết bị ngoại tuyến',
-            value: '1',
-            icon: Icons.wifi_off,
+            label: 'Tổng số',
+            value: '${_notifications.length}',
+            icon: Icons.list_alt,
             iconBgColor: AppColors.alertOfflineBg,
             onTap: () {},
           ),
           const SizedBox(width: 12),
           AlertSummaryCard(
-            label: 'Tự động hóa hôm nay',
-            value: '12',
+            label: 'Tự động hóa',
+            value: '${_notifications.where((n) => n.type.toLowerCase() == 'automation').length}',
             icon: Icons.auto_mode,
             iconBgColor: AppColors.alertGreenBg,
             onTap: () {},

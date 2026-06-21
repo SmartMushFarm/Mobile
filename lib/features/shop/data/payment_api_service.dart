@@ -49,4 +49,25 @@ class PaymentApiService {
       rethrow;
     }
   }
+
+  Future<String> createPayOSPayment(int orderId) async {
+    try {
+      final response = await _dio.post('/payments/payos/create', data: {
+        'order_id': orderId,
+      });
+      
+      final dynamic responseData = response.data;
+      if (responseData != null && responseData['success'] == true) {
+        // Lấy đúng theo cấu trúc JSON bạn cung cấp: data -> checkout_url
+        final data = responseData['data'];
+        if (data != null && data['checkout_url'] != null) {
+          return data['checkout_url'].toString();
+        }
+      }
+      return '';
+    } catch (e) {
+      debugPrint('PaymentApiService createPayOSPayment Error: $e');
+      rethrow;
+    }
+  }
 }

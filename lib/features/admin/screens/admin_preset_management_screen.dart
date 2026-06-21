@@ -89,7 +89,13 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
         centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin');
+            }
+          },
         ),
         actions: [
           IconButton(
@@ -133,9 +139,7 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
                           margin: const EdgeInsets.only(bottom: 12),
                           child: InkWell(
                             borderRadius: BorderRadius.circular(12),
-                            onTap: () {
-                              // Potentially add edit screen
-                            },
+                            onTap: () => context.push('/presets/create', extra: preset).then((_) => _fetchPresets()),
                             child: Padding(
                               padding: const EdgeInsets.all(16.0),
                               child: Row(
@@ -190,6 +194,10 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
                                         style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
                                       ),
                                     ),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                                    onPressed: () => context.push('/presets/create', extra: preset).then((_) => _fetchPresets()),
+                                  ),
                                   IconButton(
                                     icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
                                     onPressed: () => _showDeleteConfirm(preset['id']),

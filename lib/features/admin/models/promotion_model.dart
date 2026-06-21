@@ -17,9 +17,9 @@ class PromotionModel {
 
   factory PromotionModel.fromJson(Map<String, dynamic> json) {
     return PromotionModel(
-      id: json['id'],
+      id: json['id'] != null ? int.tryParse(json['id'].toString()) : null,
       code: json['code'] ?? '',
-      discountPercent: json['discount_percent'] ?? 0,
+      discountPercent: (double.tryParse(json['discount_percent']?.toString() ?? '0') ?? 0).toInt(),
       validFrom: DateTime.parse(json['valid_from'] ?? DateTime.now().toIso8601String()),
       validTo: DateTime.parse(json['valid_to'] ?? DateTime.now().toIso8601String()),
       status: json['status'] ?? 'Active',

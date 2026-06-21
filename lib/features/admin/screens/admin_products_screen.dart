@@ -1,6 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_product_card.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_stat_card.dart';
@@ -70,7 +70,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     );
   }
 
-  Future<void> _handleFormSubmit(int? id, Map<String, dynamic> data, File? image) async {
+  Future<void> _handleFormSubmit(int? id, Map<String, dynamic> data, XFile? image) async {
     Navigator.pop(context); // Close sheet
     setState(() => _isLoading = true);
     try {
@@ -229,7 +229,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
             onTap: () => context.push('/admin/categories'),
           ),
           const SizedBox(width: 8),
-          AdminNotificationBell(badgeCount: 3),
+          const AdminNotificationBell(),
           const SizedBox(width: 8),
           _HeaderIconButton(
             icon: Icons.logout,

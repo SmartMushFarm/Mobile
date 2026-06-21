@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
-import 'package:smartmush_farmer/features/admin/data/admin_mock_data.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_app_bar.dart';
-import 'package:smartmush_farmer/features/admin/widgets/admin_status_badge.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
+import 'package:smartmush_farmer/features/admin/data/admin_maintenance_service.dart';
+import 'package:smartmush_farmer/features/user/models/maintenance_ticket.dart';
+import 'package:smartmush_farmer/features/user/widgets/maintenance_status_badge.dart';
 
 class AdminMaintenanceScreen extends StatefulWidget {
   const AdminMaintenanceScreen({super.key});
@@ -13,172 +15,68 @@ class AdminMaintenanceScreen extends StatefulWidget {
 }
 
 class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
+  final AdminMaintenanceService _service = AdminMaintenanceService();
+  List<MaintenanceTicket> _tickets = [];
+  bool _isLoading = true;
   String _selectedFilter = 'Tất cả';
 
   final List<Map<String, dynamic>> _filters = [
     {'label': 'Tất cả', 'status': null},
-    {'label': 'Chờ tiếp nhận', 'status': 'pending'},
-    {'label': 'Đã tiếp nhận', 'status': 'accepted'},
-    {'label': 'Đã phân công', 'status': 'assigned'},
-    {'label': 'Hoàn thành', 'status': 'completed'},
+    {'label': 'Chờ duyệt', 'status': 'Pending'},
+    {'label': 'Đã tiếp nhận', 'status': 'Received'},
+    {'label': 'Đang xử lý', 'status': 'Processing'},
+    {'label': 'Đợi xác nhận', 'status': 'WaitingConfirmation'},
+    {'label': 'Hoàn thành', 'status': 'Completed'},
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _fetchTickets();
+  }
+
+  Future<void> _fetchTickets() async {
+    setState(() => _isLoading = true);
+    try {
+      final status = _filters.firstWhere((f) => f['label'] == _selectedFilter)['status'];
+      final data = await _service.getAllRequests(status: status);
+      setState(() {
+        _tickets = data;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Lỗi tải dữ liệu: $e')));
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final tickets = AdminMockData.maintenanceTickets;
-    final selectedStatus = _filters
-        .firstWhere((f) => f['label'] == _selectedFilter)['status'];
-
-    var filtered = selectedStatus == null
-        ? tickets
-        : tickets.where((t) => t['status'] == selectedStatus).toList();
-
-    final pendingCount = tickets.where((t) => t['status'] == 'pending').length;
-    final completedCount = tickets.where((t) => t['status'] == 'completed').length;
+    final pendingCount = _tickets.where((t) => t.status == MaintenanceStatus.pending).length;
+    final processingCount = _tickets.where((t) => t.status == MaintenanceStatus.processing).length;
+    final completedCount = _tickets.where((t) => t.status == MaintenanceStatus.completed).length;
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: const AdminAppBar(title: 'Quản lý bảo trì'),
+      appBar: const AdminAppBar(title: 'Quản lý bảo trì', showBack: true),
       body: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            color: Colors.white,
-            child: Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.warning.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.pending_actions, color: AppColors.warning, size: 22),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$pendingCount',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.warning,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Chờ tiếp nhận',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.success.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.check_circle, color: AppColors.success, size: 22),
-                            const SizedBox(height: 8),
-                            Text(
-                              '$completedCount',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.success,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Hoàn thành',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Container(
-                        padding: const EdgeInsets.all(14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Icon(Icons.build, color: AppColors.primary, size: 22),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${tickets.length}',
-                              style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            const Text(
-                              'Tổng phiếu',
-                              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  height: 38,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    children: _filters.map((f) {
-                      final isActive = _selectedFilter == f['label'];
-                      return Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: GestureDetector(
-                          onTap: () => setState(() => _selectedFilter = f['label'] as String),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                            decoration: BoxDecoration(
-                              color: isActive ? AppColors.primary : AppColors.metricIconBackground,
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Text(
-                              f['label'] as String,
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isActive ? Colors.white : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
+          _buildSummarySection(pendingCount, processingCount, completedCount),
+          _buildFilterBar(),
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: filtered.length,
-              itemBuilder: (context, index) => _buildTicketCard(filtered[index]),
+            child: RefreshIndicator(
+              onRefresh: _fetchTickets,
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _tickets.isEmpty
+                      ? _buildEmptyState()
+                      : ListView.builder(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: _tickets.length,
+                          itemBuilder: (context, index) => _buildTicketCard(_tickets[index]),
+                        ),
             ),
           ),
         ],
@@ -187,23 +85,54 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
     );
   }
 
-  Widget _buildTicketCard(Map<String, dynamic> ticket) {
-    final statusConfig = {
-      'pending': (AdminStatusType.pending, 'Chờ tiếp nhận', AppColors.warning),
-      'accepted': (AdminStatusType.processing, 'Đã tiếp nhận', const Color(0xFF0EA5E9)),
-      'assigned': (AdminStatusType.active, 'Đã phân công', AppColors.primary),
-      'completed': (AdminStatusType.success, 'Hoàn thành', AppColors.success),
-    };
-    final entry = statusConfig[ticket['status']] ??
-        (AdminStatusType.pending, 'Chờ tiếp nhận', AppColors.warning);
+  Widget _buildSummarySection(int pending, int processing, int completed) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: Row(
+        children: [
+          _SummaryBox(label: 'Chờ duyệt', value: '$pending', color: AppColors.warning),
+          const SizedBox(width: 12),
+          _SummaryBox(label: 'Đang sửa', value: '$processing', color: Colors.blue),
+          const SizedBox(width: 12),
+          _SummaryBox(label: 'Xong', value: '$completed', color: AppColors.success),
+        ],
+      ),
+    );
+  }
 
-    final urgencyConfig = {
-      'high': (AppColors.danger, 'Cao'),
-      'medium': (AppColors.warning, 'Trung bình'),
-      'low': (AppColors.success, 'Thấp'),
-    };
-    final urgency = urgencyConfig[ticket['urgency']] ?? (AppColors.warning, 'Trung bình');
+  Widget _buildFilterBar() {
+    return Container(
+      height: 50,
+      color: Colors.white,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _filters.length,
+        itemBuilder: (context, index) {
+          final filter = _filters[index]['label'];
+          final isActive = _selectedFilter == filter;
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: ChoiceChip(
+              label: Text(filter),
+              selected: isActive,
+              onSelected: (selected) {
+                if (selected) {
+                  setState(() => _selectedFilter = filter);
+                  _fetchTickets();
+                }
+              },
+              selectedColor: AppColors.primary,
+              labelStyle: TextStyle(color: isActive ? Colors.white : AppColors.textSecondary),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
+  Widget _buildTicketCard(MaintenanceTicket ticket) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
@@ -213,142 +142,29 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
         border: Border.all(color: AppColors.border),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: urgency.$1.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(Icons.build, color: AppColors.warning, size: 26),
-              ),
-              const SizedBox(width: 14),
               Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            ticket['deviceName'],
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: urgency.$1.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'Khẩn: ${urgency.$2}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: urgency.$1,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      ticket['issue'],
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Icon(Icons.person, size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          ticket['userName'],
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Icon(Icons.access_time, size: 13, color: AppColors.textSecondary),
-                        const SizedBox(width: 4),
-                        Text(
-                          ticket['submittedAt'],
-                          style: const TextStyle(
-                            fontSize: 12,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                child: Text(ticket.deviceName, 
+                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               ),
+              MaintenanceStatusBadge(status: ticket.status),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
+          Text(ticket.title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          Text(ticket.description, style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+          const Divider(height: 24),
           Row(
             children: [
-              AdminStatusBadge(label: entry.$2, type: entry.$1, small: true),
+              const Icon(Icons.access_time, size: 14, color: AppColors.textSecondary),
+              const SizedBox(width: 4),
+              Text(DateFormat('dd/MM HH:mm').format(ticket.createdAt), 
+                style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
               const Spacer(),
-              if (ticket['status'] == 'pending')
-                OutlinedButton(
-                  onPressed: () => _showAcceptDialog(context, ticket),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Tiếp nhận',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                )
-              else if (ticket['status'] == 'accepted')
-                OutlinedButton(
-                  onPressed: () => _showAssignDialog(context, ticket),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.primary,
-                    side: const BorderSide(color: AppColors.primary),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Phân công',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                )
-              else if (ticket['status'] == 'assigned')
-                OutlinedButton(
-                  onPressed: () => _showCompleteDialog(context, ticket),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.success,
-                    side: const BorderSide(color: AppColors.success),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: const Text(
-                    'Hoàn thành',
-                    style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                  ),
-                ),
+              _buildActions(ticket),
             ],
           ),
         ],
@@ -356,103 +172,221 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
     );
   }
 
-  void _showAcceptDialog(BuildContext context, Map<String, dynamic> ticket) {
+  Widget _buildActions(MaintenanceTicket ticket) {
+    switch (ticket.status) {
+      case MaintenanceStatus.pending:
+        return ElevatedButton(
+          onPressed: () => _handleApprove(ticket),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+          child: const Text('Duyệt', style: TextStyle(color: Colors.white)),
+        );
+      case MaintenanceStatus.received:
+        return ElevatedButton(
+          onPressed: () => _showScheduleDialog(ticket),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+          child: const Text('Đặt lịch', style: TextStyle(color: Colors.white)),
+        );
+      case MaintenanceStatus.waitingConfirmation:
+        return ElevatedButton(
+          onPressed: () => _handleConfirm(ticket),
+          style: ElevatedButton.styleFrom(backgroundColor: AppColors.success),
+          child: const Text('Xác nhận xong', style: TextStyle(color: Colors.white)),
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Future<void> _handleApprove(MaintenanceTicket ticket) async {
+    try {
+      await _service.approveRequest(int.parse(ticket.id));
+      // Sau khi duyệt thành công, chuyển ngay sang bước đặt lịch
+      _showScheduleDialog(ticket);
+    } catch (e) {
+      _showSnackBar('Lỗi phê duyệt: $e', isError: true);
+    }
+  }
+
+  Future<void> _handleConfirm(MaintenanceTicket ticket) async {
+    try {
+      await _service.confirmCompleted(int.parse(ticket.id));
+      _fetchTickets();
+      _showSnackBar('Đã xác nhận hoàn thành');
+    } catch (e) {
+      _showSnackBar('Lỗi: $e', isError: true);
+    }
+  }
+
+  void _showScheduleDialog(MaintenanceTicket ticket) {
+    final noteController = TextEditingController();
+    DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
+    String selectedPriority = 'Medium';
+    int? selectedTechId;
+    List<dynamic> technicians = [];
+    bool isLoadingTechs = true;
+
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Tiếp nhận yêu cầu',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        content: Text(
-          'Xác nhận tiếp nhận yêu cầu bảo trì cho ${ticket['deviceName']}?',
-          style: const TextStyle(fontSize: 14),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã tiếp nhận yêu cầu bảo trì'),
-                  backgroundColor: AppColors.primary,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          if (technicians.isEmpty && isLoadingTechs) {
+            _service.getUsersByRole('Technician').then((list) {
+              setDialogState(() {
+                technicians = list;
+                isLoadingTechs = false;
+                if (technicians.isNotEmpty) {
+                  // Ép kiểu ID về int để khớp với DropdownButtonFormField<int>
+                  final firstId = technicians[0]['id'];
+                  selectedTechId = firstId is int ? firstId : int.tryParse(firstId.toString());
+                }
+              });
+            }).catchError((e) {
+              setDialogState(() => isLoadingTechs = false);
+            });
+          }
+
+          return AlertDialog(
+            title: const Text('Đặt lịch bảo trì', style: TextStyle(fontWeight: FontWeight.bold)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Vui lòng gán kỹ thuật viên, chọn thời gian và mức độ ưu tiên.', 
+                    style: TextStyle(fontSize: 13, color: Colors.grey)),
+                  const SizedBox(height: 16),
+                  if (isLoadingTechs)
+                    const Center(child: CircularProgressIndicator())
+                  else if (technicians.isEmpty)
+                    const Text('Không tìm thấy kỹ thuật viên nào', style: TextStyle(color: Colors.red))
+                  else
+                    DropdownButtonFormField<int>(
+                      value: selectedTechId,
+                      decoration: const InputDecoration(
+                        labelText: 'Chọn Kỹ thuật viên *',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: technicians.map((tech) {
+                        // Ép kiểu ID từng item về int
+                        final id = tech['id'] is int ? tech['id'] : int.tryParse(tech['id'].toString());
+                        return DropdownMenuItem<int>(
+                          value: id,
+                          child: Text(tech['name'] ?? 'KTV #$id'),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        setDialogState(() => selectedTechId = val);
+                      },
+                    ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: selectedPriority,
+                    decoration: const InputDecoration(
+                      labelText: 'Mức độ ưu tiên',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(
+                      value: p,
+                      child: Text(p),
+                    )).toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedPriority = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: noteController, 
+                    decoration: const InputDecoration(
+                      labelText: 'Ghi chú của Admin',
+                      hintText: 'Ví dụ: Hẹn khách lúc 9h sáng',
+                      border: OutlineInputBorder(),
+                    )
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('Ngày bảo trì', style: TextStyle(fontSize: 14)),
+                    subtitle: Text(DateFormat('dd/MM/yyyy').format(selectedDate), 
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary)),
+                    trailing: const Icon(Icons.calendar_today, color: AppColors.primary),
+                    onTap: () async {
+                      final picked = await showDatePicker(
+                        context: context,
+                        initialDate: selectedDate,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (picked != null) {
+                        setDialogState(() => selectedDate = picked);
+                      }
+                    },
+                  ),
+                ],
+              ),
             ),
-            child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _fetchTickets();
+                }, 
+                child: const Text('Để sau', style: TextStyle(color: Colors.grey))
+              ),
+              ElevatedButton(
+                onPressed: (selectedTechId == null) ? null : () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await _service.scheduleRequest(
+                      id: int.parse(ticket.id),
+                      scheduledDate: selectedDate,
+                      adminNote: noteController.text,
+                      technicianId: selectedTechId!,
+                      priority: selectedPriority,
+                    );
+                    _fetchTickets();
+                    _showSnackBar('Đã đặt lịch thành công');
+                  } catch (e) {
+                    _showSnackBar('Lỗi đặt lịch: $e', isError: true);
+                    _fetchTickets();
+                  }
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+                child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
-  void _showAssignDialog(BuildContext context, Map<String, dynamic> ticket) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Phân công kỹ thuật viên',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        content: const Text(
-          'Chức năng phân công kỹ thuật viên đang được phát triển.',
-          style: TextStyle(fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(ctx),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('OK', style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
+  Widget _buildEmptyState() {
+    return const Center(child: Text('Không có yêu cầu bảo trì nào'));
   }
 
-  void _showCompleteDialog(BuildContext context, Map<String, dynamic> ticket) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Hoàn thành bảo trì',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
-        content: Text(
-          'Xác nhận hoàn thành bảo trì cho ${ticket['deviceName']}?',
-          style: const TextStyle(fontSize: 14),
+  void _showSnackBar(String msg, {bool isError = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.red : null));
+  }
+}
+
+class _SummaryBox extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  const _SummaryBox({required this.label, required this.value, required this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(color: color.withOpacity(0.1), borderRadius: BorderRadius.circular(12)),
+        child: Column(
+          children: [
+            Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Hủy', style: TextStyle(color: AppColors.textSecondary)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Đã hoàn thành bảo trì'),
-                  backgroundColor: AppColors.success,
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.success,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('Xác nhận', style: TextStyle(color: Colors.white)),
-          ),
-        ],
       ),
     );
   }

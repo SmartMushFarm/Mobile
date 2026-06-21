@@ -12,6 +12,9 @@ import 'package:smartmush_farmer/features/admin/data/admin_dashboard_service.dar
 import 'package:smartmush_farmer/features/admin/models/dashboard_stats_model.dart';
 import 'package:smartmush_farmer/features/auth/models/user_model.dart';
 import 'package:smartmush_farmer/features/user/services/device_service.dart';
+import 'package:smartmush_farmer/features/admin/data/admin_maintenance_service.dart';
+import 'package:smartmush_farmer/features/user/models/maintenance_ticket.dart';
+import 'package:smartmush_farmer/features/alerts/services/notification_service.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_device_card.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -27,6 +30,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   UserModel? _admin;
   DashboardStatsModel? _stats;
   List<dynamic> _realtimeDevices = [];
+  int _unreadCount = 0;
+  int _pendingMaintenance = 0;
+  int _processingMaintenance = 0;
   bool _isLoading = true;
   String? _error;
 
@@ -46,11 +52,21 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         AuthService.fetchMe(),
         _dashboardService.getDashboardStats(),
         _deviceService.getAllDevices(),
+        NotificationService().getUnreadCount(),
+        AdminMaintenanceService().getAllRequests(),
       ]);
+
+      final maintenanceRequests = results[4] as List<MaintenanceTicket>;
+      final pendingMaintenance = maintenanceRequests.where((t) => t.status == MaintenanceStatus.pending).length;
+      final processingMaintenance = maintenanceRequests.where((t) => t.status == MaintenanceStatus.processing || t.status == MaintenanceStatus.received).length;
+
       setState(() {
         _admin = results[0] as UserModel;
         _stats = results[1] as DashboardStatsModel;
         _realtimeDevices = results[2] as List<dynamic>;
+        _unreadCount = results[3] as int;
+        _pendingMaintenance = pendingMaintenance;
+        _processingMaintenance = processingMaintenance;
         _isLoading = false;
       });
     } catch (e) {
@@ -159,7 +175,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ],
             ),
           ),
-          AdminNotificationBell(badgeCount: 3),
+          AdminNotificationBell(),
           const SizedBox(width: 8),
           _DashboardHeaderButton(
             icon: Icons.logout,
@@ -241,9 +257,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           color: const Color(0xFFEF4444),
         ),
         AdminStatCard(
-          label: 'Open Tickets',
-          value: '${_stats?.openTickets ?? 0}',
-          icon: Icons.confirmation_number,
+          label: 'Thông báo mới',
+          value: '${_unreadCount}',
+          icon: Icons.notifications_active,
           color: const Color(0xFFF59E0B),
         ),
         AdminStatCard(
@@ -328,7 +344,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Critical Alerts',
+          'Thông báo mới nhất',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -336,15 +352,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        const Center(
-          child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 20),
-            child: Text(
-              'No critical alerts',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
-          ),
-        ),
+        _DashboardAlertSummary(count: _unreadCount),
       ],
     );
   }
@@ -373,24 +381,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             children: [
               _buildMaintenanceItem(
                 'Pending',
-                '0',
+                '$_pendingMaintenance',
                 AppColors.warning,
               ),
               _buildMaintenanceDivider(),
               _buildMaintenanceItem(
-                'Assigned',
-                '0',
+                'Processing',
+                '$_processingMaintenance',
                 const Color(0xFF0EA5E9),
               ),
               _buildMaintenanceDivider(),
               _buildMaintenanceItem(
                 'Done Today',
-                '0',
+                '${_stats?.ordersToday ?? 0}',
                 AppColors.success,
               ),
             ],
           ),
         ),
+        const SizedBox(height: 24),
+        _buildManagementActions(),
       ],
     );
   }
@@ -480,10 +490,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return Icons.inventory_2;
       case 'category':
         return Icons.category;
+      case 'discount':
+        return Icons.discount;
+      case 'settings_input_component':
+        return Icons.settings_input_component;
       case 'receipt_long':
         return Icons.receipt_long;
       case 'people':
         return Icons.people;
+      case 'build':
+        return Icons.build;
       case 'system_update':
         return Icons.system_update;
       case 'notifications':
@@ -491,6 +507,42 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       default:
         return Icons.circle;
     }
+  }
+}
+
+class _DashboardAlertSummary extends StatelessWidget {
+  final int count;
+  const _DashboardAlertSummary({required this.count});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => context.go('/admin/alerts'),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: count > 0 ? AppColors.danger.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: count > 0 ? AppColors.danger.withValues(alpha: 0.3) : AppColors.border),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.notifications_active, color: count > 0 ? AppColors.danger : AppColors.textSecondary),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                count > 0 ? 'Bạn có $count thông báo chưa xử lý' : 'Không có thông báo mới',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: count > 0 ? AppColors.danger : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+          ],
+        ),
+      ),
+    );
   }
 }
 

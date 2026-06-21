@@ -116,7 +116,7 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
                 substrateMoisturePercent: 65,
               ),
               devices: BoxDeviceState(
-                ledOn: false,
+                ledOn: _isStatusOn(device['light_status']),
                 fanOn: _isStatusOn(device['fan_status']),
                 mistOn: _isStatusOn(device['mist_status']),
                 heaterOn: _isStatusOn(device['heater_status']),
@@ -168,7 +168,13 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
           backgroundColor: AppColors.loginBackground,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back, color: AppColors.loginLabel),
-            onPressed: () => context.pop(),
+            onPressed: () {
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/home');
+              }
+            },
           ),
         ),
         body: Center(

@@ -38,4 +38,8 @@ class ApiConfig {
   static String get authUsers => '$baseUrl/auth/users';
   static String authUserById(int id) => '$baseUrl/auth/users/$id';
   static String authUserStatus(int id) => '$baseUrl/auth/users/$id/status';
+
+  // Promotions
+  static String get promotions => '$baseUrl/promotions';
+  static String promotionById(int id) => '$baseUrl/promotions/$id';
 }

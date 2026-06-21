@@ -34,7 +34,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await AuthService.login(
-        email: _emailController.text.trim(),
+        email: _emailController.text.trim().toLowerCase(),
         password: _passwordController.text,
       );
 
@@ -55,6 +55,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (role == 'admin') {
         context.go('/admin');
+      } else if (role == 'technician') {
+        context.go('/technician');
       } else {
         context.go('/home');
       }
@@ -85,12 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _handleForgotPassword() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Forgot password flow coming soon'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    context.push('/forgot-password');
   }
 
   @override

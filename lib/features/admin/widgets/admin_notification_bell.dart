@@ -1,14 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
+import 'package:smartmush_farmer/features/alerts/services/notification_service.dart';
 
-class AdminNotificationBell extends StatelessWidget {
-  final int badgeCount;
-
+class AdminNotificationBell extends StatefulWidget {
   const AdminNotificationBell({
     super.key,
-    this.badgeCount = 0,
   });
+
+  @override
+  State<AdminNotificationBell> createState() => _AdminNotificationBellState();
+}
+
+class _AdminNotificationBellState extends State<AdminNotificationBell> {
+  int _unreadCount = 0;
+  final NotificationService _notificationService = NotificationService();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnreadCount();
+  }
+
+  Future<void> _loadUnreadCount() async {
+    try {
+      final count = await _notificationService.getUnreadCount();
+      if (mounted) {
+        setState(() {
+          _unreadCount = count;
+        });
+      }
+    } catch (e) {
+      // Silent error
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +58,7 @@ class AdminNotificationBell extends StatelessWidget {
                 size: 22,
               ),
             ),
-            if (badgeCount > 0)
+            if (_unreadCount > 0)
               Positioned(
                 right: 0,
                 top: 0,
@@ -46,7 +71,7 @@ class AdminNotificationBell extends StatelessWidget {
                   ),
                   child: Center(
                     child: Text(
-                      badgeCount > 9 ? '9+' : '$badgeCount',
+                      _unreadCount > 9 ? '9+' : '$_unreadCount',
                       style: const TextStyle(
                         fontSize: 9,
                         fontWeight: FontWeight.w700,

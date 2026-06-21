@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/config/api_config.dart';
 import '../models/product.dart';
@@ -55,13 +56,14 @@ class ShopApiService {
   }
 
   // Admin methods for Products
-  Future<void> createProduct(Map<String, dynamic> data, dynamic imageFile) async {
+  Future<void> createProduct(Map<String, dynamic> data, XFile? imageFile) async {
     try {
       FormData formData = FormData.fromMap(data);
       if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
         formData.files.add(MapEntry(
           'image',
-          await MultipartFile.fromFile(imageFile.path, filename: 'product.jpg'),
+          MultipartFile.fromBytes(bytes, filename: 'product.jpg'),
         ));
       }
       await _dio.post(ApiConfig.products, data: formData);
@@ -70,13 +72,14 @@ class ShopApiService {
     }
   }
 
-  Future<void> updateProduct(int id, Map<String, dynamic> data, dynamic imageFile) async {
+  Future<void> updateProduct(int id, Map<String, dynamic> data, XFile? imageFile) async {
     try {
       FormData formData = FormData.fromMap(data);
       if (imageFile != null) {
+        final bytes = await imageFile.readAsBytes();
         formData.files.add(MapEntry(
           'image',
-          await MultipartFile.fromFile(imageFile.path, filename: 'product.jpg'),
+          MultipartFile.fromBytes(bytes, filename: 'product.jpg'),
         ));
       }
       await _dio.put(ApiConfig.productById(id), data: formData);

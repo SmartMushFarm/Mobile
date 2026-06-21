@@ -59,6 +59,11 @@ class BoxOverviewTabContent extends StatelessWidget {
               icon: Icons.wb_sunny_outlined,
               isActive: devices.heaterOn,
             ),
+            DeviceStatusChip(
+              label: 'Đèn chiếu sáng',
+              icon: Icons.lightbulb_outline,
+              isActive: devices.ledOn,
+            ),
           ],
         ),
         const SizedBox(height: 24),

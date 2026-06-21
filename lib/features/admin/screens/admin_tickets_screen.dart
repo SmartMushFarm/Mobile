@@ -95,7 +95,7 @@ class AdminTicketsScreen extends StatelessWidget {
               ],
             ),
           ),
-          AdminNotificationBell(badgeCount: 3),
+          const AdminNotificationBell(),
         ],
       ),
     );

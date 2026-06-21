@@ -23,7 +23,8 @@ enum DeliveryMethod {
 
 enum PaymentMethod {
   cod('Thanh toán khi nhận hàng'),
-  bankTransfer('Chuyển khoản ngân hàng'),
+  payOS('Thanh toán qua PayOS (QR Code/Ngân hàng)'),
+  bankTransfer('Chuyển khoản thủ công'),
   creditCard('Thẻ ngân hàng');
 
   const PaymentMethod(this.label);

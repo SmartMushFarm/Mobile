@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import '../data/admin_promotion_service.dart';
 import '../models/promotion_model.dart';
@@ -151,68 +152,129 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Manage Promotions'),
+        title: const Text('Manage Promotions', 
+          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin');
+            }
+          },
+        ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.add),
+            icon: const Icon(Icons.add, color: AppColors.primary),
             onPressed: () => _showPromotionDialog(),
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text(_error!))
-              : ListView.builder(
-                  itemCount: _promotions.length,
-                  itemBuilder: (context, index) {
-                    final p = _promotions[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      child: ListTile(
-                        title: Text(p.code, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+      body: RefreshIndicator(
+        onRefresh: _loadPromotions,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _error != null
+                ? SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    child: SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.7,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Text('${p.discountPercent}% Discount'),
-                            Text('Valid: ${DateFormat('yyyy-MM-dd').format(p.validFrom)} to ${DateFormat('yyyy-MM-dd').format(p.validTo)}'),
-                            Text('Status: ${p.status}', style: TextStyle(color: p.status == 'Active' ? Colors.green : Colors.red)),
-                          ],
-                        ),
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              icon: const Icon(Icons.edit, color: Colors.blue),
-                              onPressed: () => _showPromotionDialog(p),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.delete, color: Colors.red),
-                              onPressed: () async {
-                                final confirm = await showDialog<bool>(
-                                  context: context,
-                                  builder: (context) => AlertDialog(
-                                    title: const Text('Delete Promotion'),
-                                    content: const Text('Are you sure you want to delete this promotion?'),
-                                    actions: [
-                                      TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                                      TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-                                    ],
-                                  ),
-                                );
-                                if (confirm == true) {
-                                  await _promotionService.deletePromotion(p.id!);
-                                  _loadPromotions();
-                                }
-                              },
+                            const Icon(Icons.error_outline, size: 48, color: Colors.redAccent),
+                            const SizedBox(height: 16),
+                            Text(_error!, style: const TextStyle(color: Colors.redAccent)),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: _loadPromotions,
+                              child: const Text('Try Again'),
                             ),
                           ],
                         ),
                       ),
-                    );
-                  },
-                ),
+                    ),
+                  )
+                : _promotions.isEmpty
+                    ? const Center(child: Text('No promotions found.'))
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: _promotions.length,
+                        itemBuilder: (context, index) {
+                          final p = _promotions[index];
+                          final isActive = p.status == 'Active';
+                          
+                          return Card(
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            child: ListTile(
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              leading: Container(
+                                width: 48,
+                                height: 48,
+                                decoration: BoxDecoration(
+                                  color: (isActive ? AppColors.primary : Colors.grey).withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Icon(
+                                  Icons.discount_outlined,
+                                  color: isActive ? AppColors.primary : Colors.grey,
+                                ),
+                              ),
+                              title: Text(p.code, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SizedBox(height: 4),
+                                  Text('${p.discountPercent}% Discount', 
+                                    style: const TextStyle(color: AppColors.shopPrice, fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 2),
+                                  Text('Exp: ${DateFormat('yyyy-MM-dd').format(p.validTo)}', 
+                                    style: const TextStyle(fontSize: 12)),
+                                ],
+                              ),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                                    onPressed: () => _showPromotionDialog(p),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                    onPressed: () async {
+                                      final confirm = await showDialog<bool>(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: const Text('Delete Promotion'),
+                                          content: const Text('Are you sure you want to delete this promotion?'),
+                                          actions: [
+                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                                          ],
+                                        ),
+                                      );
+                                      if (confirm == true) {
+                                        await _promotionService.deletePromotion(p.id!);
+                                        _loadPromotions();
+                                      }
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
     );
   }
 }

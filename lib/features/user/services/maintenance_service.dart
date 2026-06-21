@@ -24,15 +24,21 @@ class MaintenanceService {
     required int deviceId,
     required String title,
     required String description,
-    String priority = 'High',
   }) async {
     try {
       await ApiClient.instance.post('/maintenance-requests', data: {
         'device_id': deviceId,
         'title': title,
         'description': description,
-        'priority': priority,
       });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> cancelRequest(int id) async {
+    try {
+      await ApiClient.instance.put('/maintenance-requests/$id/cancel');
     } catch (e) {
       rethrow;
     }

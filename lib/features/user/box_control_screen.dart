@@ -29,6 +29,7 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
     'fan': false,
     'heater': false,
     'mist': false,
+    'light': false,
   };
   String _mode = 'Auto';
   String _boxName = 'Thiết bị';
@@ -93,6 +94,7 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
           _deviceStates['fan'] = _isStatusOn(device['fan_status']);
           _deviceStates['heater'] = _isStatusOn(device['heater_status']);
           _deviceStates['mist'] = _isStatusOn(device['mist_status']);
+          _deviceStates['light'] = _isStatusOn(device['light_status']);
           _isLoading = false;
         });
       } else {
@@ -120,9 +122,10 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
   }
 
   Future<void> _toggleDevice(String key, bool value) async {
-    if (_mode == 'Auto' && key != 'all') {
+    // Cho phép 'light' (đèn) và 'all' (tắt tất cả) hoạt động dù là Auto hay Manual
+    if (_mode == 'Auto' && key != 'all' && key != 'light') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Chuyển sang chế độ Manual để điều khiển thủ công')),
+        const SnackBar(content: Text('Chuyển sang chế độ Manual để điều khiển Quạt/Sưởi/Phun sương')),
       );
       return;
     }
@@ -276,6 +279,14 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
               crossAxisSpacing: 16,
               childAspectRatio: 1.05,
               children: [
+                DeviceControlCard(
+                  icon: Icons.lightbulb_outline,
+                  label: 'Đèn chiếu sáng',
+                  statusText: _deviceStates['light']! ? 'BẬT' : 'TẮT',
+                  isOn: _deviceStates['light']!,
+                  onToggle: (v) => _toggleDevice('light', v),
+                  subStatusText: 'Luôn khả dụng',
+                ),
                 DeviceControlCard(
                   icon: Icons.air,
                   label: 'Quạt thông gió',

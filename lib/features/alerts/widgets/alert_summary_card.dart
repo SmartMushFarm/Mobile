@@ -23,11 +23,11 @@ class AlertSummaryCard extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.shopCategoryBorder),
+            border: Border.all(color: AppColors.shopCategoryBorder.withValues(alpha: 0.3)),
             boxShadow: const [
               BoxShadow(
                 color: Color(0x0D4CAF50),
@@ -36,7 +36,8 @@ class AlertSummaryCard extends StatelessWidget {
               ),
             ],
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Container(
                 padding: const EdgeInsets.all(8),
@@ -50,22 +51,19 @@ class AlertSummaryCard extends StatelessWidget {
                   color: AppColors.shopTextPrimary,
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTextStyles.alertSummaryLabel,
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      value,
-                      style: AppTextStyles.alertSummaryValue,
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: AppTextStyles.alertSummaryLabel,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: AppTextStyles.alertSummaryValue,
+                textAlign: TextAlign.center,
               ),
             ],
           ),

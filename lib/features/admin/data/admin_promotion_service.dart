@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import '../../../core/network/api_client.dart';
+import '../../../core/config/api_config.dart';
 import '../models/promotion_model.dart';
 
 class AdminPromotionService {
@@ -8,7 +9,8 @@ class AdminPromotionService {
 
   Future<List<PromotionModel>> getAllPromotions() async {
     try {
-      final response = await _dio.get('/promotions');
+      final response = await _dio.get(ApiConfig.promotions);
+      debugPrint('Promotions Response: ${response.data}');
       final List data = _extractList(response.data);
       return data.map((json) => PromotionModel.fromJson(json)).toList();
     } catch (e) {
@@ -19,7 +21,7 @@ class AdminPromotionService {
 
   Future<PromotionModel> createPromotion(PromotionModel promotion) async {
     try {
-      final response = await _dio.post('/promotions', data: promotion.toJson());
+      final response = await _dio.post(ApiConfig.promotions, data: promotion.toJson());
       return PromotionModel.fromJson(response.data);
     } catch (e) {
       debugPrint('AdminPromotionService createPromotion Error: $e');
@@ -29,7 +31,7 @@ class AdminPromotionService {
 
   Future<PromotionModel> updatePromotion(int id, PromotionModel promotion) async {
     try {
-      final response = await _dio.put('/promotions/$id', data: promotion.toJson());
+      final response = await _dio.put(ApiConfig.promotionById(id), data: promotion.toJson());
       return PromotionModel.fromJson(response.data);
     } catch (e) {
       debugPrint('AdminPromotionService updatePromotion Error: $e');
@@ -39,7 +41,7 @@ class AdminPromotionService {
 
   Future<void> deletePromotion(int id) async {
     try {
-      await _dio.delete('/promotions/$id');
+      await _dio.delete(ApiConfig.promotionById(id));
     } catch (e) {
       debugPrint('AdminPromotionService deletePromotion Error: $e');
       rethrow;

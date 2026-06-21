@@ -30,12 +30,14 @@ class AdminMaintenanceService {
     required DateTime scheduledDate,
     required String adminNote,
     required int technicianId,
+    required String priority,
   }) async {
     try {
       await _dio.put('/admin/maintenance-requests/$id/schedule', data: {
         'scheduled_date': scheduledDate.toIso8601String(),
         'admin_note': adminNote,
         'technician_id': technicianId,
+        'priority': priority,
       });
     } catch (e) {
       rethrow;
@@ -55,6 +57,15 @@ class AdminMaintenanceService {
   Future<void> confirmCompleted(int id) async {
     try {
       await _dio.put('/admin/maintenance-requests/$id/confirm-completed');
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<List<dynamic>> getUsersByRole(String role) async {
+    try {
+      final response = await _dio.get('/auth/users/role/$role');
+      return response.data is List ? response.data : (response.data['data'] ?? []);
     } catch (e) {
       rethrow;
     }
