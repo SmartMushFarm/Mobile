@@ -103,16 +103,16 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
         if (rawId != null) userId = int.tryParse(rawId.toString());
       }
 
-      final double mistOn = double.parse(_mistOnController.text);
-      final double mistOff = double.parse(_mistOffController.text);
-      final double fanOn = double.parse(_fanOnController.text);
-      final double fanOff = double.parse(_fanOffController.text);
-      final double heaterOn = double.parse(_heaterOnController.text);
-      final double heaterOff = double.parse(_heaterOffController.text);
+      final double mistOn = double.tryParse(_mistOnController.text) ?? 0;
+      final double mistOff = double.tryParse(_mistOffController.text) ?? 0;
+      final double fanOn = double.tryParse(_fanOnController.text) ?? 0;
+      final double fanOff = double.tryParse(_fanOffController.text) ?? 0;
+      final double heaterOn = double.tryParse(_heaterOnController.text) ?? 0;
+      final double heaterOff = double.tryParse(_heaterOffController.text) ?? 0;
 
-      if (mistOn >= mistOff) throw Exception('Mist ON humidity must be less than OFF humidity');
-      if (fanOff >= fanOn) throw Exception('Fan OFF humidity must be less than ON humidity');
-      if (heaterOn >= heaterOff) throw Exception('Heater ON temp must be less than OFF temp');
+      if (mistOn >= mistOff) throw Exception('Độ ẩm bật phun sương phải nhỏ hơn độ ẩm tắt');
+      if (fanOff >= fanOn) throw Exception('Độ ẩm tắt quạt phải nhỏ hơn độ ẩm bật');
+      if (heaterOn >= heaterOff) throw Exception('Nhiệt độ bật sưởi phải nhỏ hơn nhiệt độ tắt');
 
       final data = {
         'created_by': widget.preset?['created_by'] ?? userId,
@@ -124,16 +124,20 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
         'fan_off_humidity': fanOff,
         'heater_on_temp': heaterOn,
         'heater_off_temp': heaterOff,
-        'danger_humidity': double.parse(_dangerHumController.text),
-        'max_temp_danger': double.parse(_maxTempController.text),
-        'mist_pulse_on_seconds': int.parse(_pulseOnController.text),
-        'mist_pulse_off_seconds': int.parse(_pulseOffController.text),
+        'danger_humidity': double.tryParse(_dangerHumController.text) ?? 98.0,
+        'max_temp_danger': double.tryParse(_maxTempController.text) ?? 35.0,
+        'mist_pulse_on_seconds': int.tryParse(_pulseOnController.text) ?? 10,
+        'mist_pulse_off_seconds': int.tryParse(_pulseOffController.text) ?? 60,
         'is_recommended': _isAdmin ? _isRecommended : (widget.preset?['is_recommended'] ?? false),
         'description': _descController.text.trim(),
       };
 
-      if (widget.preset != null) {
-        final id = int.parse(widget.preset!['id'].toString());
+      final bool isEditing = widget.preset != null && widget.preset!['id'] != null;
+
+      if (isEditing) {
+        final rawId = widget.preset!['id'];
+        final id = int.tryParse(rawId.toString());
+        if (id == null) throw Exception('ID của Preset không hợp lệ');
         await _presetService.updatePreset(id: id, data: data);
       } else {
         await _presetService.createPreset(data);
@@ -175,7 +179,7 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isEditing = widget.preset != null;
+    final bool isEditing = widget.preset != null && widget.preset!['id'] != null;
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       appBar: AppBar(
@@ -198,33 +202,33 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
               const SizedBox(height: 20),
               Text('Thông số phun sương', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
-              AppTextField(label: 'Bật phun sương khi ẩm dưới (%)', controller: _mistOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm thấp hơn mức này sẽ bật phun sương'),
+              AppTextField(label: 'Bật phun sương khi ẩm dưới (%)', controller: _mistOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm thấp hơn mức này sẽ bật phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt phun sương khi ẩm đạt (%)', controller: _mistOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm đạt mức này sẽ tắt phun sương'),
+              AppTextField(label: 'Tắt phun sương khi ẩm đạt (%)', controller: _mistOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm đạt mức này sẽ tắt phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 24),
               Text('Thông số quạt thông gió', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
-              AppTextField(label: 'Bật quạt khi ẩm trên (%)', controller: _fanOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm cao hơn mức này sẽ bật quạt'),
+              AppTextField(label: 'Bật quạt khi ẩm trên (%)', controller: _fanOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm cao hơn mức này sẽ bật quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt quạt khi ẩm giảm còn (%)', controller: _fanOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm giảm về mức này sẽ tắt quạt'),
+              AppTextField(label: 'Tắt quạt khi ẩm giảm còn (%)', controller: _fanOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm giảm về mức này sẽ tắt quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 24),
               Text('Thông số máy sưởi', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
-              AppTextField(label: 'Bật sưởi khi nhiệt dưới (°C)', controller: _heaterOnController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ thấp hơn mức này sẽ bật sưởi'),
+              AppTextField(label: 'Bật sưởi khi nhiệt dưới (°C)', controller: _heaterOnController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ thấp hơn mức này sẽ bật sưởi', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt sưởi khi nhiệt đạt (°C)', controller: _heaterOffController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ đạt mức này sẽ tắt sưởi'),
+              AppTextField(label: 'Tắt sưởi khi nhiệt đạt (°C)', controller: _heaterOffController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ đạt mức này sẽ tắt sưởi', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 24),
               Text('Ngưỡng an toàn & Chu kỳ phun', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
-              AppTextField(label: 'Ngưỡng ẩm nguy hiểm (%)', controller: _dangerHumController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ bật quạt và tắt phun sương'),
+              AppTextField(label: 'Ngưỡng ẩm nguy hiểm (%)', controller: _dangerHumController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ bật quạt và tắt phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 12),
-              AppTextField(label: 'Ngưỡng nhiệt nguy hiểm (°C)', controller: _maxTempController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ tắt sưởi và bật quạt'),
+              AppTextField(label: 'Ngưỡng nhiệt nguy hiểm (°C)', controller: _maxTempController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ tắt sưởi và bật quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(child: AppTextField(label: 'Thời gian phun mỗi lần (giây)', controller: _pulseOnController, keyboardType: TextInputType.number, hintText: 'Số giây phun sương')),
+                  Expanded(child: AppTextField(label: 'Thời gian phun mỗi lần (giây)', controller: _pulseOnController, keyboardType: TextInputType.number, hintText: 'Số giây phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (int.tryParse(v) == null ? 'Phải là số nguyên' : null))),
                   const SizedBox(width: 12),
-                  Expanded(child: AppTextField(label: 'Thời gian nghỉ (giây)', controller: _pulseOffController, keyboardType: TextInputType.number, hintText: 'Số giây nghỉ')),
+                  Expanded(child: AppTextField(label: 'Thời gian nghỉ (giây)', controller: _pulseOffController, keyboardType: TextInputType.number, hintText: 'Số giây nghỉ', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (int.tryParse(v) == null ? 'Phải là số nguyên' : null))),
                 ],
               ),
               if (_isAdmin) ...[

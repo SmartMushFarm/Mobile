@@ -84,6 +84,17 @@ class DeviceService {
 
   // --- New APIs ---
 
+  /// Admin - Create a new device
+  Future<void> createDevice({required String deviceName}) async {
+    try {
+      await ApiClient.instance.post('/devices', data: {
+        'device_name': deviceName,
+      });
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   /// Admin - Generate claim code for a device
   Future<String> generateClaimCode(int deviceId) async {
     try {

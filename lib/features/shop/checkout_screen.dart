@@ -79,7 +79,15 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
 
   CheckoutSummary get _summary {
     final currencyFormat = NumberFormat.currency(locale: 'vi_VN', symbol: 'đ');
-    double subtotal = _cart?.totalAmount ?? 0;
+    
+    // Tính toán lại subtotal từ danh sách items
+    double subtotal = 0;
+    if (_cart != null) {
+      for (var item in _cart!.items) {
+        subtotal += item.price * item.quantity;
+      }
+    }
+    
     double shipping = 0; // Miễn phí vận chuyển
     
     double discount = 0;
@@ -87,7 +95,8 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       discount = subtotal * (_appliedPromotion!.discountPercent / 100);
     }
     
-    double tax = (subtotal - discount) * 0.05;
+    // Không tính thuế (bằng 0)
+    double tax = 0;
     double total = subtotal + shipping + tax - discount;
     
     return CheckoutSummary(
@@ -530,8 +539,6 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
             const SizedBox(height: 12),
           ],
           _BreakdownRow(label: 'Phí vận chuyển', value: s.shipping),
-          const SizedBox(height: 12),
-          _BreakdownRow(label: 'Thuế', value: s.tax),
           const SizedBox(height: 16),
           Divider(color: AppColors.checkoutSectionBorder, thickness: 1),
           const SizedBox(height: 16),

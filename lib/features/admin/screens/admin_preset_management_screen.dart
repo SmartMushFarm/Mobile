@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/user/services/preset_service.dart';
+import 'package:smartmush_farmer/features/admin/widgets/admin_app_bar.dart';
 
 class AdminPresetManagementScreen extends StatefulWidget {
   const AdminPresetManagementScreen({super.key});
@@ -33,7 +35,7 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
       setState(() => _isLoading = false);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Lỗi: $e')),
         );
       }
     }
@@ -42,174 +44,103 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
   Future<void> _deletePreset(int id) async {
     try {
       await _presetService.deletePreset(id);
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Preset deleted successfully')),
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Đã xóa Preset')),
+      );
       _fetchPresets();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Delete error: $e'), backgroundColor: Colors.redAccent),
+          SnackBar(content: Text('Lỗi khi xóa: $e')),
         );
       }
     }
-  }
-
-  void _showDeleteConfirm(int id) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Delete'),
-        content: const Text('Are you sure you want to delete this preset?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _deletePreset(id);
-            },
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
-      appBar: AppBar(
-        title: const Text('Preset Management', 
-          style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
-        backgroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: true,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textPrimary),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/admin');
-            }
-          },
-        ),
+      appBar: const AdminAppBar(title: 'Quản lý Presets', showBack: true),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Khi Admin tạo, bạn có thể truyền flag để Backend biết đây là Recommended
+          context.push('/presets/create', extra: {'is_admin': true}).then((_) => _fetchPresets());
+        },
+        backgroundColor: AppColors.primary,
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _fetchPresets,
+        child: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : _presets.isEmpty
+                ? const Center(child: Text('Chưa có preset nào.'))
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: _presets.length,
+                    itemBuilder: (context, index) {
+                      final preset = _presets[index];
+                      final bool isRecommended = preset['is_recommended'] == true || preset['is_recommended'] == 1;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: isRecommended ? Colors.amber.shade100 : Colors.green.shade100,
+                            child: Icon(
+                              isRecommended ? Icons.star : Icons.settings,
+                              color: isRecommended ? Colors.amber : Colors.green,
+                            ),
+                          ),
+                          title: Text(
+                            preset['preset_name'] ?? 'Không tên',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text('Nấm: ${preset['mushroom_type'] ?? 'N/A'} • ${isRecommended ? "Recommended" : "User"}'),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
+                                onPressed: () {
+                                  context.push('/presets/create', extra: preset).then((_) => _fetchPresets());
+                                },
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => _showDeleteConfirm(preset['id']),
+                              ),
+                            ],
+                          ),
+                          onTap: () {
+                            context.push('/presets/create', extra: preset).then((_) => _fetchPresets());
+                          },
+                        ),
+                      );
+                    },
+                  ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirm(int id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Xác nhận xóa'),
+        content: const Text('Bạn có chắc chắn muốn xóa preset này không?'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh, color: AppColors.primary),
-            onPressed: _fetchPresets,
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deletePreset(id);
+            },
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.push('/presets/create').then((_) => _fetchPresets()),
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add, color: Colors.white),
-        label: const Text('Create Preset', style: TextStyle(color: Colors.white)),
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _fetchPresets,
-              child: _presets.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[300]),
-                          const SizedBox(height: 16),
-                          const Text('No presets found', 
-                            style: TextStyle(color: AppColors.textSecondary, fontSize: 16)),
-                        ],
-                      ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: _presets.length,
-                      itemBuilder: (context, index) {
-                        final preset = _presets[index];
-                        final isRecommended = preset['is_recommended'] == true || preset['is_recommended'] == 1;
-                        
-                        return Card(
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          margin: const EdgeInsets.only(bottom: 12),
-                          child: InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap: () => context.push('/presets/create', extra: preset).then((_) => _fetchPresets()),
-                            child: Padding(
-                              padding: const EdgeInsets.all(16.0),
-                              child: Row(
-                                children: [
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      color: isRecommended 
-                                        ? AppColors.primary.withOpacity(0.1) 
-                                        : Colors.blue.withOpacity(0.1),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Icon(
-                                      isRecommended ? Icons.star : Icons.settings_input_component,
-                                      color: isRecommended ? AppColors.primary : Colors.blue,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 16),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          preset['preset_name'] ?? 'Unnamed Preset',
-                                          style: const TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          'Mushroom: ${preset['mushroom_type'] ?? 'N/A'}',
-                                          style: const TextStyle(
-                                            fontSize: 13,
-                                            color: AppColors.textSecondary,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  if (isRecommended)
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: AppColors.primary,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: const Text(
-                                        'System',
-                                        style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
-                                      ),
-                                    ),
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, color: Colors.blueAccent),
-                                    onPressed: () => context.push('/presets/create', extra: preset).then((_) => _fetchPresets()),
-                                  ),
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                    onPressed: () => _showDeleteConfirm(preset['id']),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-            ),
     );
   }
 }

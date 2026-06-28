@@ -8,7 +8,6 @@ import 'package:smartmush_farmer/features/admin/screens/admin_products_screen.da
 import 'package:smartmush_farmer/features/admin/screens/admin_categories_screen.dart';
 import 'package:smartmush_farmer/features/admin/admin_maintenance_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_alerts_screen.dart';
-import 'package:smartmush_farmer/features/admin/screens/admin_tickets_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_preset_management_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_promotions_screen.dart';
 import 'package:smartmush_farmer/features/admin/screens/admin_profile_screen.dart';
@@ -37,7 +36,6 @@ import 'package:smartmush_farmer/features/user/create_maintenance_request_screen
 import 'package:smartmush_farmer/features/user/create_preset_screen.dart';
 import 'package:smartmush_farmer/features/user/maintenance_requests_screen.dart';
 import 'package:smartmush_farmer/features/user/preset_list_screen.dart';
-import 'package:smartmush_farmer/features/user/my_devices_screen.dart';
 import 'package:smartmush_farmer/features/user/profile_screen.dart';
 
 final GoRouter appRouter = GoRouter(
@@ -141,10 +139,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/profile',
       builder: (context, state) => const ProfileScreen(),
-    ),
-    GoRoute(
-      path: '/profile/devices',
-      builder: (context, state) => const MyDevicesScreen(),
     ),
     GoRoute(
       path: '/profile/settings',
@@ -262,10 +256,6 @@ final GoRouter appRouter = GoRouter(
     GoRoute(
       path: '/admin/alerts',
       builder: (context, state) => const AdminAlertsScreen(),
-    ),
-    GoRoute(
-      path: '/admin/tickets',
-      builder: (context, state) => const AdminTicketsScreen(),
     ),
     GoRoute(
       path: '/admin/presets',
