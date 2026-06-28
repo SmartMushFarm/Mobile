@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:dio/dio.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_app_bar.dart';
 import 'package:smartmush_farmer/features/admin/widgets/admin_bottom_nav.dart';
@@ -200,10 +201,10 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
   Future<void> _handleApprove(MaintenanceTicket ticket) async {
     try {
       await _service.approveRequest(int.parse(ticket.id));
-      // Sau khi duyệt thành công, chuyển ngay sang bước đặt lịch
-      _showScheduleDialog(ticket);
+      _fetchTickets();
+      _showSnackBar('Đã tiếp nhận yêu cầu. Vui lòng Đặt lịch.');
     } catch (e) {
-      _showSnackBar('Lỗi phê duyệt: $e', isError: true);
+      _showSnackBar(_parseDioError(e), isError: true);
     }
   }
 
@@ -213,14 +214,21 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
       _fetchTickets();
       _showSnackBar('Đã xác nhận hoàn thành');
     } catch (e) {
-      _showSnackBar('Lỗi: $e', isError: true);
+      _showSnackBar(_parseDioError(e), isError: true);
     }
+  }
+
+  String _parseDioError(dynamic e) {
+    if (e is DioException && e.response != null) {
+      return "Status: ${e.response?.statusCode}\nData: ${e.response?.data}";
+    }
+    return e.toString();
   }
 
   void _showScheduleDialog(MaintenanceTicket ticket) {
     final noteController = TextEditingController();
     DateTime selectedDate = DateTime.now().add(const Duration(days: 1));
-    String selectedPriority = 'Medium';
+    String selectedPriority = 'Normal'; // Đổi từ Medium sang Normal
     int? selectedTechId;
     List<dynamic> technicians = [];
     bool isLoadingTechs = true;
@@ -285,7 +293,7 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
                       labelText: 'Mức độ ưu tiên',
                       border: OutlineInputBorder(),
                     ),
-                    items: ['Low', 'Medium', 'High'].map((p) => DropdownMenuItem(
+                    items: ['Low', 'Normal', 'High', 'Urgent'].map((p) => DropdownMenuItem(
                       value: p,
                       child: Text(p),
                     )).toList(),
@@ -334,7 +342,6 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
               ),
               ElevatedButton(
                 onPressed: (selectedTechId == null) ? null : () async {
-                  Navigator.pop(ctx);
                   try {
                     await _service.scheduleRequest(
                       id: int.parse(ticket.id),
@@ -343,11 +350,15 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
                       technicianId: selectedTechId!,
                       priority: selectedPriority,
                     );
-                    _fetchTickets();
-                    _showSnackBar('Đã đặt lịch thành công');
+                    if (mounted) {
+                      Navigator.pop(ctx);
+                      _fetchTickets();
+                      _showSnackBar('Đã đặt lịch thành công');
+                    }
                   } catch (e) {
-                    _showSnackBar('Lỗi đặt lịch: $e', isError: true);
-                    _fetchTickets();
+                    if (mounted) {
+                      _showSnackBar(_parseDioError(e), isError: true);
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
@@ -365,7 +376,45 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
   }
 
   void _showSnackBar(String msg, {bool isError = false}) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: isError ? Colors.red : null));
+    String finalMsg = msg;
+    
+    // Nếu là lỗi DioException, cố gắng lấy message chi tiết từ server
+    if (isError && msg.contains('DioException')) {
+      if (msg.contains('400')) {
+        finalMsg = "Lỗi 400: Dữ liệu gửi lên không đúng. Hãy thử lại hoặc báo Admin.";
+      }
+    }
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(finalMsg), 
+        backgroundColor: isError ? Colors.redAccent : Colors.green,
+        duration: const Duration(seconds: 6),
+        behavior: SnackBarBehavior.floating,
+        action: isError ? SnackBarAction(
+          label: "Chi tiết",
+          textColor: Colors.white,
+          onPressed: () {
+            String detailedError = msg;
+            // Cố gắng trích xuất data từ DioException
+            if (msg.contains('DioException')) {
+              // Tìm kiếm nội dung phản hồi trong chuỗi lỗi nếu có
+            }
+            
+            showDialog(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text("Phản hồi từ Server (Debug)"),
+                content: SingleChildScrollView(
+                  child: Text(msg),
+                ),
+                actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Đóng"))],
+              ),
+            );
+          },
+        ) : null,
+      )
+    );
   }
 }
 

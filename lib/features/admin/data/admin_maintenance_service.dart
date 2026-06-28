@@ -33,11 +33,14 @@ class AdminMaintenanceService {
     required String priority,
   }) async {
     try {
+      // Gửi định dạng ISO8601 đầy đủ (2026-06-15T02:00:00.000Z) để khớp với kiểu timestamptz trong DB
+      final String formattedDate = scheduledDate.toUtc().toIso8601String();
+      
       await _dio.put('/admin/maintenance-requests/$id/schedule', data: {
-        'scheduled_date': scheduledDate.toIso8601String(),
-        'admin_note': adminNote,
+        'scheduled_date': formattedDate,
+        'admin_note': adminNote.trim().isEmpty ? "Admin scheduled maintenance" : adminNote.trim(),
         'technician_id': technicianId,
-        'priority': priority,
+        'priority': priority, // Giữ nguyên định dạng: Low, Normal, High, Urgent
       });
     } catch (e) {
       rethrow;

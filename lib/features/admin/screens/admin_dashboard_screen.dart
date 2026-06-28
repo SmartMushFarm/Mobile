@@ -399,8 +399,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ],
           ),
         ),
-        const SizedBox(height: 24),
-        _buildManagementActions(),
       ],
     );
   }
