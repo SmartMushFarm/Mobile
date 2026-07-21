@@ -10,7 +10,6 @@ import 'package:smartmush_farmer/features/user/services/preset_service.dart';
 
 class CreatePresetScreen extends StatefulWidget {
   const CreatePresetScreen({super.key, this.preset});
-
   final Map<String, dynamic>? preset;
 
   @override
@@ -22,12 +21,12 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
   final _presetService = PresetService();
   bool _isLoading = false;
   bool _isAdmin = false;
+  bool _isOwner = false;
   bool _isRecommended = false;
 
   late final TextEditingController _nameController;
   late final TextEditingController _typeController;
   late final TextEditingController _descController;
-
   late final TextEditingController _mistOnController;
   late final TextEditingController _mistOffController;
   late final TextEditingController _fanOnController;
@@ -46,7 +45,6 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
     _nameController = TextEditingController(text: p?['preset_name']);
     _typeController = TextEditingController(text: p?['mushroom_type']);
     _descController = TextEditingController(text: p?['description']);
-
     _mistOnController = TextEditingController(text: (p?['mist_on_humidity'] ?? '75').toString());
     _mistOffController = TextEditingController(text: (p?['mist_off_humidity'] ?? '85').toString());
     _fanOnController = TextEditingController(text: (p?['fan_on_humidity'] ?? '95').toString());
@@ -54,124 +52,113 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
     _heaterOnController = TextEditingController(text: (p?['heater_on_temp'] ?? '20').toString());
     _heaterOffController = TextEditingController(text: (p?['heater_off_temp'] ?? '25').toString());
     _dangerHumController = TextEditingController(text: (p?['danger_humidity'] ?? '98').toString());
-    _maxTempController = TextEditingController(text: (p?['max_temp_danger'] ?? '35').toString());
+    _maxTempController = TextEditingController(text: (p?['max_temp_danger'] ?? '32').toString());
     _pulseOnController = TextEditingController(text: (p?['mist_pulse_on_seconds'] ?? '10').toString());
     _pulseOffController = TextEditingController(text: (p?['mist_pulse_off_seconds'] ?? '60').toString());
-    _isRecommended = (p?['is_recommended'] == true || p?['is_recommended'] == 1);
-    _checkAdmin();
+    
+    _checkPermissions();
   }
 
-  Future<void> _checkAdmin() async {
-    final userMap = await AuthService.getCurrentUser();
-    if (userMap != null) {
-      final user = UserModel.fromJson(userMap);
+  Future<void> _checkPermissions() async {
+    try {
+      final user = await AuthService.fetchMe();
+      final myId = user.id?.toString();
+      final p = widget.preset;
       if (mounted) {
         setState(() {
           _isAdmin = (user.role ?? '').toLowerCase() == 'admin';
+          final rawRec = p?['is_recommended'];
+          _isRecommended = rawRec == true || rawRec == 1 || rawRec?.toString() == '1' || rawRec?.toString().toLowerCase() == 'true';
+          
+          final creatorId = p?['created_by']?.toString() ?? p?['userId']?.toString() ?? p?['user_id']?.toString();
+          _isOwner = (myId != null && creatorId != null && myId == creatorId);
+          if (p == null) _isOwner = true;
         });
       }
-    }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _typeController.dispose();
-    _descController.dispose();
-    _mistOnController.dispose();
-    _mistOffController.dispose();
-    _fanOnController.dispose();
-    _fanOffController.dispose();
-    _heaterOnController.dispose();
-    _heaterOffController.dispose();
-    _dangerHumController.dispose();
-    _maxTempController.dispose();
-    _pulseOnController.dispose();
+    _nameController.dispose(); _typeController.dispose(); _descController.dispose();
+    _mistOnController.dispose(); _mistOffController.dispose(); _fanOnController.dispose();
+    _fanOffController.dispose(); _heaterOnController.dispose(); _heaterOffController.dispose();
+    _dangerHumController.dispose(); _maxTempController.dispose(); _pulseOnController.dispose();
     _pulseOffController.dispose();
     super.dispose();
   }
 
   Future<void> _handleSave() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-
     setState(() => _isLoading = true);
     try {
-      final user = await AuthService.getCurrentUser();
-      int? userId;
-      if (user != null) {
-        final rawId = user['id'] ?? (user['data'] != null ? user['data']['id'] : null);
-        if (rawId != null) userId = int.tryParse(rawId.toString());
-      }
-
-      final double mistOn = double.tryParse(_mistOnController.text) ?? 0;
-      final double mistOff = double.tryParse(_mistOffController.text) ?? 0;
-      final double fanOn = double.tryParse(_fanOnController.text) ?? 0;
-      final double fanOff = double.tryParse(_fanOffController.text) ?? 0;
-      final double heaterOn = double.tryParse(_heaterOnController.text) ?? 0;
-      final double heaterOff = double.tryParse(_heaterOffController.text) ?? 0;
-
-      if (mistOn >= mistOff) throw Exception('Độ ẩm bật phun sương phải nhỏ hơn độ ẩm tắt');
-      if (fanOff >= fanOn) throw Exception('Độ ẩm tắt quạt phải nhỏ hơn độ ẩm bật');
-      if (heaterOn >= heaterOff) throw Exception('Nhiệt độ bật sưởi phải nhỏ hơn nhiệt độ tắt');
-
       final data = {
-        'created_by': widget.preset?['created_by'] ?? userId,
         'preset_name': _nameController.text.trim(),
         'mushroom_type': _typeController.text.trim(),
-        'mist_on_humidity': mistOn,
-        'mist_off_humidity': mistOff,
-        'fan_on_humidity': fanOn,
-        'fan_off_humidity': fanOff,
-        'heater_on_temp': heaterOn,
-        'heater_off_temp': heaterOff,
-        'danger_humidity': double.tryParse(_dangerHumController.text) ?? 98.0,
-        'max_temp_danger': double.tryParse(_maxTempController.text) ?? 35.0,
-        'mist_pulse_on_seconds': int.tryParse(_pulseOnController.text) ?? 10,
-        'mist_pulse_off_seconds': int.tryParse(_pulseOffController.text) ?? 60,
-        'is_recommended': _isAdmin ? _isRecommended : (widget.preset?['is_recommended'] ?? false),
+        'mist_on_humidity': double.tryParse(_mistOnController.text),
+        'mist_off_humidity': double.tryParse(_mistOffController.text),
+        'fan_on_humidity': double.tryParse(_fanOnController.text),
+        'fan_off_humidity': double.tryParse(_fanOffController.text),
+        'heater_on_temp': double.tryParse(_heaterOnController.text),
+        'heater_off_temp': double.tryParse(_heaterOffController.text),
+        'danger_humidity': double.tryParse(_dangerHumController.text),
+        'max_temp_danger': double.tryParse(_maxTempController.text),
+        'mist_pulse_on_seconds': int.tryParse(_pulseOnController.text),
+        'mist_pulse_off_seconds': int.tryParse(_pulseOffController.text),
         'description': _descController.text.trim(),
       };
-
+      
       final bool isEditing = widget.preset != null && widget.preset!['id'] != null;
 
       if (isEditing) {
-        final rawId = widget.preset!['id'];
-        final id = int.tryParse(rawId.toString());
-        if (id == null) throw Exception('ID của Preset không hợp lệ');
-        await _presetService.updatePreset(id: id, data: data);
+        if (_isAdmin) data['is_recommended'] = _isRecommended;
+        await _presetService.updatePreset(id: int.parse(widget.preset!['id'].toString()), data: data);
       } else {
+        final user = await AuthService.getCurrentUser();
+        data['created_by'] = user?['id'];
+        if (_isAdmin) data['is_recommended'] = _isRecommended;
         await _presetService.createPreset(data);
       }
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(widget.preset != null ? 'Preset updated successfully' : 'Preset created successfully'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Cập nhật thành công!'), backgroundColor: AppColors.primary));
         Navigator.pop(context, true);
       }
-    } catch (e) {
-      String errorMessage = e.toString();
-      if (e is DioException && e.response != null && e.response?.data != null) {
-        final data = e.response?.data;
-        if (data is Map && data.containsKey('message')) {
-          errorMessage = data['message'];
-        } else {
-          errorMessage = data.toString();
-        }
-      }
+    } on DioException catch (e) {
+      String msg = e.response?.data?['message'] ?? 'Lỗi 403: Không có quyền cập nhật';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.redAccent));
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
+  Future<void> _handleDelete() async {
+    final id = int.tryParse(widget.preset?['id']?.toString() ?? '');
+    if (id == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Xác nhận xóa Preset #$id'),
+        content: const Text('Bạn có chắc chắn muốn xóa preset này?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa', style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    setState(() => _isLoading = true);
+    try {
+      await _presetService.deletePreset(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Lỗi: $errorMessage'),
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 5),
-          ),
-        );
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Đã xóa thành công')));
+        Navigator.pop(context, true);
       }
+    } on DioException catch (e) {
+      final user = await AuthService.getCurrentUser();
+      final myId = user?['id'];
+      final creatorId = widget.preset?['created_by'];
+      String msg = e.response?.data?['message'] ?? 'Bạn (ID $myId) không có quyền xóa Preset này (Chủ là $creatorId, Hệ thống: $_isRecommended)';
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg), backgroundColor: Colors.redAccent, duration: const Duration(seconds: 5)));
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -180,12 +167,27 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
   @override
   Widget build(BuildContext context) {
     final bool isEditing = widget.preset != null && widget.preset!['id'] != null;
+    
+    // PHÂN QUYỀN CHUẨN:
+    // - Nếu Recommended == TRUE: Chỉ Admin.
+    // - Nếu Recommended == FALSE: Admin HOẶC Chủ sở hữu (Owner).
+    bool canEdit = false;
+    if (isEditing) {
+      canEdit = _isAdmin || (_isOwner && !_isRecommended);
+    } else {
+      canEdit = true; 
+    }
+
     return Scaffold(
       backgroundColor: AppColors.loginBackground,
       appBar: AppBar(
-        title: Text(isEditing ? 'Chỉnh sửa Preset' : 'Tạo Preset mới', style: GoogleFonts.plusJakartaSans(color: Colors.white)),
+        title: Text(isEditing ? 'Chỉnh sửa Preset #${widget.preset!['id']}' : 'Tạo Preset mới', style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 18)),
         backgroundColor: AppColors.primary,
         iconTheme: const IconThemeData(color: Colors.white),
+        actions: [
+          if (isEditing && canEdit)
+            IconButton(icon: const Icon(Icons.delete_outline), onPressed: _isLoading ? null : _handleDelete),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -194,55 +196,55 @@ class _CreatePresetScreenState extends State<CreatePresetScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              AppTextField(label: 'Tên preset', controller: _nameController, hintText: 'VD: Nấm Bào Ngư Mùa Đông', validator: (v) => v!.isEmpty ? 'Bắt buộc' : null),
+              if (isEditing && !canEdit)
+                Container(
+                  padding: const EdgeInsets.all(12), margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(color: Colors.amber.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.amber)),
+                  child: Text(_isRecommended 
+                    ? 'Đây là Preset hệ thống. Chỉ tài khoản Quản trị viên mới có quyền chỉnh sửa hoặc xóa.' 
+                    : 'Bạn không có quyền chỉnh sửa Preset này.', style: TextStyle(color: Colors.amber[900], fontSize: 13)),
+                ),
+              AppTextField(label: 'Tên preset', controller: _nameController, enabled: canEdit, validator: (v) => v!.isEmpty ? 'Bắt buộc' : null),
               const SizedBox(height: 12),
-              AppTextField(label: 'Loại nấm', controller: _typeController, hintText: 'VD: nam_bao_ngu', validator: (v) => v!.isEmpty ? 'Bắt buộc' : null),
+              AppTextField(label: 'Loại nấm', controller: _typeController, enabled: canEdit, validator: (v) => v!.isEmpty ? 'Bắt buộc' : null),
               const SizedBox(height: 12),
-              AppTextField(label: 'Mô tả', controller: _descController, hintText: 'Ghi chú về preset...', maxLines: 2),
+              AppTextField(label: 'Mô tả', controller: _descController, enabled: canEdit, maxLines: 2),
               const SizedBox(height: 20),
-              Text('Thông số phun sương', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Thông số kỹ thuật', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
               const Divider(),
-              AppTextField(label: 'Bật phun sương khi ẩm dưới (%)', controller: _mistOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm thấp hơn mức này sẽ bật phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Bật phun sương khi ẩm dưới (%)', controller: _mistOnController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt phun sương khi ẩm đạt (%)', controller: _mistOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm đạt mức này sẽ tắt phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Tắt phun sương khi ẩm đạt (%)', controller: _mistOffController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 24),
-              Text('Thông số quạt thông gió', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(),
-              AppTextField(label: 'Bật quạt khi ẩm trên (%)', controller: _fanOnController, keyboardType: TextInputType.number, hintText: 'Độ ẩm cao hơn mức này sẽ bật quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Bật quạt khi ẩm trên (%)', controller: _fanOnController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt quạt khi ẩm giảm còn (%)', controller: _fanOffController, keyboardType: TextInputType.number, hintText: 'Độ ẩm giảm về mức này sẽ tắt quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Tắt quạt khi ẩm giảm còn (%)', controller: _fanOffController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 24),
-              Text('Thông số máy sưởi', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(),
-              AppTextField(label: 'Bật sưởi khi nhiệt dưới (°C)', controller: _heaterOnController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ thấp hơn mức này sẽ bật sưởi', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Bật sưởi khi nhiệt dưới (°C)', controller: _heaterOnController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 12),
-              AppTextField(label: 'Tắt sưởi khi nhiệt đạt (°C)', controller: _heaterOffController, keyboardType: TextInputType.number, hintText: 'Nhiệt độ đạt mức này sẽ tắt sưởi', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Tắt sưởi khi nhiệt đạt (°C)', controller: _heaterOffController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 24),
-              Text('Ngưỡng an toàn & Chu kỳ phun', style: GoogleFonts.plusJakartaSans(fontSize: 18, fontWeight: FontWeight.bold)),
-              const Divider(),
-              AppTextField(label: 'Ngưỡng ẩm nguy hiểm (%)', controller: _dangerHumController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ bật quạt và tắt phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
+              AppTextField(label: 'Ngưỡng ẩm nguy hiểm (%)', controller: _dangerHumController, keyboardType: TextInputType.number, enabled: canEdit),
               const SizedBox(height: 12),
-              AppTextField(label: 'Ngưỡng nhiệt nguy hiểm (°C)', controller: _maxTempController, keyboardType: TextInputType.number, hintText: 'Quá mức này hệ thống sẽ tắt sưởi và bật quạt', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (double.tryParse(v) == null ? 'Phải là số' : null)),
-              const SizedBox(height: 12),
+              AppTextField(label: 'Ngưỡng nhiệt nguy hiểm (°C)', controller: _maxTempController, keyboardType: TextInputType.number, enabled: canEdit),
+              const SizedBox(height: 24),
               Row(
                 children: [
-                  Expanded(child: AppTextField(label: 'Thời gian phun mỗi lần (giây)', controller: _pulseOnController, keyboardType: TextInputType.number, hintText: 'Số giây phun sương', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (int.tryParse(v) == null ? 'Phải là số nguyên' : null))),
+                  Expanded(child: AppTextField(label: 'Phun (giây)', controller: _pulseOnController, keyboardType: TextInputType.number, enabled: canEdit)),
                   const SizedBox(width: 12),
-                  Expanded(child: AppTextField(label: 'Thời gian nghỉ (giây)', controller: _pulseOffController, keyboardType: TextInputType.number, hintText: 'Số giây nghỉ', validator: (v) => v!.isEmpty ? 'Bắt buộc' : (int.tryParse(v) == null ? 'Phải là số nguyên' : null))),
+                  Expanded(child: AppTextField(label: 'Nghỉ (giây)', controller: _pulseOffController, keyboardType: TextInputType.number, enabled: canEdit)),
                 ],
               ),
               if (_isAdmin) ...[
                 const SizedBox(height: 24),
                 SwitchListTile(
-                  title: Text('Đặt làm Preset hệ thống (Được gợi ý)', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
-                  subtitle: const Text('Preset này sẽ hiển thị cho tất cả người dùng.'),
-                  value: _isRecommended,
-                  activeColor: AppColors.primary,
+                  title: const Text('Đặt làm Preset hệ thống', style: TextStyle(fontWeight: FontWeight.bold)),
+                  value: _isRecommended, activeColor: AppColors.primary,
                   onChanged: (v) => setState(() => _isRecommended = v),
                 ),
               ],
               const SizedBox(height: 32),
-              AppPrimaryButton(label: isEditing ? 'Cập nhật Preset' : 'Lưu Preset', isLoading: _isLoading, onPressed: _handleSave),
+              if (canEdit) AppPrimaryButton(label: isEditing ? 'Cập nhật Preset' : 'Lưu Preset', isLoading: _isLoading, onPressed: _handleSave),
               const SizedBox(height: 40),
             ],
           ),

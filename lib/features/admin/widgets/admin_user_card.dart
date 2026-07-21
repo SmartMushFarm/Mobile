@@ -29,7 +29,7 @@ class AdminUserCard extends StatelessWidget {
 
   bool get _isActive => status == UserStatus.active;
 
-  String get _statusLabel => _isActive ? 'Active' : 'Suspended';
+  String get _statusLabel => _isActive ? 'Hoạt động' : 'Bị khóa';
 
   Color get _statusColor => _isActive ? const Color(0xFF22C55E) : const Color(0xFFEF4444);
 
@@ -118,10 +118,10 @@ class AdminUserCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            _DetailRow(label: 'User ID', value: '#$id'),
-            _DetailRow(label: 'Devices', value: '$devices'),
-            _DetailRow(label: 'Last Active', value: lastActive),
-            _DetailRow(label: 'Status', value: _statusLabel),
+            _DetailRow(label: 'ID Người dùng', value: '#$id'),
+            _DetailRow(label: 'Thiết bị', value: '$devices'),
+            _DetailRow(label: 'Hoạt động cuối', value: lastActive),
+            _DetailRow(label: 'Trạng thái', value: _statusLabel),
             const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
@@ -136,7 +136,7 @@ class AdminUserCard extends StatelessWidget {
                   ),
                 ),
                 child: const Text(
-                  'Close',
+                  'Đóng',
                   style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
                 ),
               ),
@@ -245,14 +245,14 @@ class AdminUserCard extends StatelessWidget {
                     Expanded(
                       child: _InfoChip(
                         icon: Icons.sensors,
-                        label: '$devices Devices',
+                        label: '$devices Thiết bị',
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: _InfoChip(
                         icon: Icons.access_time,
-                        label: 'Last active: $lastActive',
+                        label: 'Hoạt động cuối: $lastActive',
                       ),
                     ),
                   ],
@@ -384,15 +384,15 @@ class _ActionButton extends StatelessWidget {
   String get _label {
     switch (action) {
       case 'view':
-        return 'View';
+        return 'Xem';
       case 'edit':
-        return 'Edit';
+        return 'Sửa';
       case 'suspend':
-        return 'Suspend';
+        return 'Khóa';
       case 'activate':
-        return 'Activate';
+        return 'Mở khóa';
       case 'status':
-        return isSuspended ? 'Activate' : 'Suspend';
+        return isSuspended ? 'Mở khóa' : 'Khóa';
       default:
         return action;
     }

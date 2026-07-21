@@ -123,7 +123,7 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
         // Silent refresh to sync data
         _loadData(showLoading: false);
       }
-    } catch (e) {
+    } on DioException catch (e) {
       if (mounted) {
         // Rollback
         setState(() {
@@ -132,7 +132,7 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
         });
 
         String errorMessage = e.toString();
-        if (e is DioException && e.response != null && e.response?.data != null) {
+        if (e.response != null && e.response?.data != null) {
           final data = e.response?.data;
           if (data is Map && data.containsKey('message')) {
             errorMessage = data['message'];
@@ -146,6 +146,21 @@ class _BoxAutomationScreenState extends State<BoxAutomationScreen> {
             content: Text('Lỗi áp dụng preset: $errorMessage'),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // Rollback
+        setState(() {
+          _activePresetId = oldActivePresetId;
+          _growStatus = oldGrowStatus;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }

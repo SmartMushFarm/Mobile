@@ -37,11 +37,13 @@ import 'package:smartmush_farmer/features/user/create_preset_screen.dart';
 import 'package:smartmush_farmer/features/user/maintenance_requests_screen.dart';
 import 'package:smartmush_farmer/features/user/preset_list_screen.dart';
 import 'package:smartmush_farmer/features/user/profile_screen.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_notifier.dart';
 
 final GoRouter appRouter = GoRouter(
   initialLocation: '/',
+  refreshListenable: AuthNotifier(),
   redirect: (context, state) async {
-    final bool loggedIn = await AuthService.isLoggedIn();
+    final bool loggedIn = AuthNotifier().isLoggedIn;
     final String location = state.uri.toString();
     
     final bool isPublicPath = location == '/' || location == '/login' || location == '/register' || location == '/forgot-password';

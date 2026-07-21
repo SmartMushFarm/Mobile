@@ -50,7 +50,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load products';
+        _error = 'Không thể tải danh sách sản phẩm';
       });
     }
   }
@@ -76,15 +76,15 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     try {
       if (id == null) {
         await _apiService.createProduct(data, image);
-        _showSnackBar('Product created successfully');
+        _showSnackBar('Đã tạo sản phẩm thành công');
       } else {
         await _apiService.updateProduct(id, data, image);
-        _showSnackBar('Product updated successfully');
+        _showSnackBar('Đã cập nhật sản phẩm thành công');
       }
       _loadData();
     } catch (e) {
-      setState(() => _isLoading = false);
-      _showSnackBar('Operation failed', isError: true);
+      setState(() => _isLoading = true);
+      _showSnackBar('Thao tác thất bại', isError: true);
     }
   }
 
@@ -92,16 +92,16 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: Text('Are you sure you want to delete "${product.name}"?'),
+        title: const Text('Xóa sản phẩm'),
+        content: Text('Bạn có chắc chắn muốn xóa "${product.name}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: const Text('Hủy'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -111,11 +111,11 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       setState(() => _isLoading = true);
       try {
         await _apiService.deleteProduct(product.id);
-        _showSnackBar('Product deleted successfully');
+        _showSnackBar('Đã xóa sản phẩm thành công');
         _loadData();
       } catch (e) {
         setState(() => _isLoading = false);
-        _showSnackBar('Failed to delete product', isError: true);
+        _showSnackBar('Xóa sản phẩm thất bại', isError: true);
       }
     }
   }
@@ -152,7 +152,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             _buildSummaryCards(),
                             const SizedBox(height: 20),
                             const Text(
-                              'Inventory List',
+                              'Danh sách tồn kho',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w700,
@@ -163,7 +163,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
                             if (_products.isEmpty)
                               const Center(child: Padding(
                                 padding: EdgeInsets.only(top: 40),
-                                child: Text('No products found'),
+                                child: Text('Không tìm thấy sản phẩm nào'),
                               ))
                             else
                               ..._products.map((p) => AdminProductCard(
@@ -212,7 +212,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
           const SizedBox(width: 12),
           const Expanded(
             child: Text(
-              'Products',
+              'Sản phẩm',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -296,7 +296,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
       children: [
         Expanded(
           child: AdminStatCard(
-            label: 'Total Products',
+            label: 'Tổng sản phẩm',
             value: '$total',
             icon: Icons.inventory_2,
             color: const Color(0xFF43B94E),
@@ -306,7 +306,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Low Stock',
+            label: 'Sắp hết hàng',
             value: '$lowStock',
             icon: Icons.warning,
             color: const Color(0xFFF59E0B),
@@ -316,7 +316,7 @@ class _AdminProductsScreenState extends State<AdminProductsScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Out Of stock',
+            label: 'Hết hàng',
             value: '$outOfStock',
             icon: Icons.error_outline,
             color: const Color(0xFFEF4444),

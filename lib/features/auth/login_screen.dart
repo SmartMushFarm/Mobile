@@ -60,27 +60,34 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         context.go('/home');
       }
-    } catch (e) {
+    } on DioException catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       
       String message = 'Đăng nhập thất bại. Vui lòng kiểm tra lại.';
       
-      if (e is DioException) {
-        if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
-          message = 'Email hoặc mật khẩu không chính xác.';
-        } else if (e.response?.data != null && e.response?.data is Map) {
-          message = e.response?.data['message'] ?? message;
-        } else if (e.type == DioExceptionType.connectionTimeout) {
-          message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra internet.';
-        }
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 401) {
+        message = 'Email hoặc mật khẩu không chính xác.';
+      } else if (e.response?.data != null && e.response?.data is Map) {
+        message = e.response?.data['message'] ?? message;
+      } else if (e.type == DioExceptionType.connectionTimeout) {
+        message = 'Không thể kết nối đến máy chủ. Vui lòng kiểm tra internet.';
       }
       
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Đã có lỗi xảy ra. Vui lòng thử lại.'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }

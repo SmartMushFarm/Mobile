@@ -76,10 +76,13 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
 
       if (device != null) {
         // Fetch history for chart
-        final List<dynamic> historyData = await _historyService.getHistoryByDeviceId(
+        List<dynamic> historyData = await _historyService.getHistoryByDeviceId(
           deviceId: int.parse(widget.boxId),
           limit: 20,
         );
+
+        // API trả về DESC (mới nhất đầu), ta đảo ngược để vẽ biểu đồ từ trái qua phải (Cũ -> Mới)
+        historyData = historyData.reversed.toList();
 
         final List<double> tempTrend = historyData
             .map((h) => (h['temperature'] ?? 0.0).toDouble())
@@ -92,11 +95,11 @@ class _BoxOverviewScreenState extends State<BoxOverviewScreen> {
             .cast<double>()
             .toList();
 
-        // Lấy 5 cái mới nhất (nằm ở cuối list) để hiện lên đầu danh sách logs
+        // Lấy 5 cái mới nhất (nằm ở cuối list sau khi đảo) để hiện lên đầu danh sách logs
         final List<ActivityLogEntry> logs = historyData.reversed.take(5).map((h) {
           final time = DateTime.tryParse(h['created_at'] ?? '') ?? DateTime.now();
           return ActivityLogEntry(
-            timeLabel: '${time.hour}:${time.minute.toString().padLeft(2, '0')}',
+            timeLabel: '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}',
             message: 'Nhiệt độ: ${h['temperature']}°C, Độ ẩm: ${h['humidity']}%',
           );
         }).toList();

@@ -1,4 +1,4 @@
-package com.example.smartmush_farmer
+package com.mvp.smartmushfarm
 
 import io.flutter.embedding.android.FlutterActivity
 

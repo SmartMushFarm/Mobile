@@ -40,6 +40,18 @@ class AdminOrderCard extends StatelessWidget {
     'Cancelled'
   ];
 
+  String _translateStatus(String s) {
+    switch (s.toLowerCase()) {
+      case 'pending': return 'Chờ xử lý';
+      case 'confirmed': return 'Đã xác nhận';
+      case 'shipping': return 'Đang giao';
+      case 'completed':
+      case 'delivered': return 'Hoàn thành';
+      case 'cancelled': return 'Đã hủy';
+      default: return s;
+    }
+  }
+
   Widget _buildStatusDropdown(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 0),
@@ -68,7 +80,7 @@ class AdminOrderCard extends StatelessWidget {
           items: _statusOptions.map<DropdownMenuItem<String>>((String value) {
             return DropdownMenuItem<String>(
               value: value,
-              child: Text(value),
+              child: Text(_translateStatus(value)),
             );
           }).toList(),
         ),
@@ -81,7 +93,7 @@ class AdminOrderCard extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Xác nhận'),
-        content: const Text('Bạn có chắc chắn muốn chuyển trạng thái sang Cancelled?'),
+        content: const Text('Bạn có chắc chắn muốn chuyển trạng thái sang Đã hủy?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),

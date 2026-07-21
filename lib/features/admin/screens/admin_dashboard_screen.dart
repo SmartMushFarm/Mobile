@@ -72,7 +72,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load dashboard data. Please try again.';
+        _error = 'Không thể tải dữ liệu bảng điều khiển. Vui lòng thử lại.';
       });
     }
   }
@@ -97,7 +97,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               const SizedBox(height: 16),
                               ElevatedButton(
                                 onPressed: _loadDashboard,
-                                child: const Text('Retry'),
+                                child: const Text('Thử lại'),
                               ),
                             ],
                           ),
@@ -245,25 +245,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       children: [
         AdminStatCard(
-          label: 'Active Devices',
+          label: 'Thiết bị hoạt động',
           value: '${_stats?.activeDevices ?? 0}',
           icon: Icons.sensors,
           color: const Color(0xFF10B981),
         ),
         AdminStatCard(
-          label: 'Offline Devices',
+          label: 'Thiết bị ngoại tuyến',
           value: '${_stats?.offlineDevices ?? 0}',
           icon: Icons.sensors_off,
           color: const Color(0xFFEF4444),
         ),
         AdminStatCard(
           label: 'Thông báo mới',
-          value: '${_unreadCount}',
+          value: '$_unreadCount',
           icon: Icons.notifications_active,
           color: const Color(0xFFF59E0B),
         ),
         AdminStatCard(
-          label: 'Orders Today',
+          label: 'Đơn hàng hôm nay',
           value: '${_stats?.ordersToday ?? 0}',
           icon: Icons.shopping_cart,
           color: const Color(0xFF3B82F6),
@@ -280,7 +280,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             const Text(
-              'Realtime Device Monitoring',
+              'Theo dõi thiết bị thời gian thực',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -290,7 +290,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             TextButton(
               onPressed: () => context.go('/admin/devices'),
               child: const Text(
-                'View All',
+                'Xem tất cả',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
@@ -306,7 +306,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             child: Padding(
               padding: EdgeInsets.symmetric(vertical: 20),
               child: Text(
-                'No realtime devices available',
+                'Không có thiết bị trực tuyến',
                 style: TextStyle(color: AppColors.textSecondary),
               ),
             ),
@@ -362,7 +362,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Maintenance Summary',
+          'Tóm tắt bảo trì',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -380,19 +380,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Row(
             children: [
               _buildMaintenanceItem(
-                'Pending',
+                'Chờ xử lý',
                 '$_pendingMaintenance',
                 AppColors.warning,
               ),
               _buildMaintenanceDivider(),
               _buildMaintenanceItem(
-                'Processing',
+                'Đang xử lý',
                 '$_processingMaintenance',
                 const Color(0xFF0EA5E9),
               ),
               _buildMaintenanceDivider(),
               _buildMaintenanceItem(
-                'Done Today',
+                'Xong hôm nay',
                 '${_stats?.ordersToday ?? 0}',
                 AppColors.success,
               ),
@@ -443,7 +443,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Management Actions',
+          'Hành động quản lý',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,

@@ -51,7 +51,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       if (mounted) {
         setState(() {
           _isLoading = false;
-          _error = 'Failed to load users. Please try again.';
+          _error = 'Không thể tải danh sách người dùng. Vui lòng thử lại.';
         });
       }
     }
@@ -75,10 +75,10 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
   Future<void> _updateUserStatus(UserModel user, String newStatus) async {
     try {
       await _userService.updateUserStatus(id: user.id!, status: newStatus);
-      _showSnackBar('Updated status for ${user.name}');
+      _showSnackBar('Đã cập nhật trạng thái cho ${user.name}');
       _loadUsers();
     } catch (e) {
-      _showSnackBar('Failed to update status: $e', isError: true);
+      _showSnackBar('Cập nhật trạng thái thất bại: $e', isError: true);
     }
   }
 
@@ -90,29 +90,29 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text('Edit User: ${user.name}'),
+        title: Text('Sửa người dùng: ${user.name}'),
         content: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: nameController,
-                decoration: const InputDecoration(labelText: 'Name'),
+                decoration: const InputDecoration(labelText: 'Họ tên'),
               ),
               TextField(
                 controller: phoneController,
-                decoration: const InputDecoration(labelText: 'Phone'),
+                decoration: const InputDecoration(labelText: 'Số điện thoại'),
                 keyboardType: TextInputType.phone,
               ),
               TextField(
                 controller: addressController,
-                decoration: const InputDecoration(labelText: 'Address'),
+                decoration: const InputDecoration(labelText: 'Địa chỉ'),
               ),
             ],
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
           ElevatedButton(
             onPressed: () async {
               try {
@@ -124,14 +124,14 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                 );
                 if (mounted) {
                   Navigator.pop(context);
-                  _showSnackBar('User updated successfully');
+                  _showSnackBar('Cập nhật người dùng thành công');
                   _loadUsers();
                 }
               } catch (e) {
-                if (mounted) _showSnackBar('Update failed: $e', isError: true);
+                if (mounted) _showSnackBar('Cập nhật thất bại: $e', isError: true);
               }
             },
-            child: const Text('Save'),
+            child: const Text('Lưu'),
           ),
         ],
       ),
@@ -160,7 +160,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                             children: [
                               Text(_error!, style: const TextStyle(color: Colors.red)),
                               const SizedBox(height: 16),
-                              ElevatedButton(onPressed: _loadUsers, child: const Text('Retry')),
+                              ElevatedButton(onPressed: _loadUsers, child: const Text('Thử lại')),
                             ],
                           ),
                         )
@@ -177,7 +177,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
                                 _buildInviteButton(context),
                                 const SizedBox(height: 20),
                                 const Text(
-                                  'User List',
+                                  'Danh sách người dùng',
                                   style: TextStyle(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w700,
@@ -312,7 +312,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
       children: [
         Expanded(
           child: AdminStatCard(
-            label: 'Total Users',
+            label: 'Tổng người dùng',
             value: '$total',
             icon: Icons.people,
             color: AppColors.primary,
@@ -322,7 +322,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Active Users',
+            label: 'Đang hoạt động',
             value: '$active',
             icon: Icons.check_circle,
             color: const Color(0xFF22C55E),
@@ -332,7 +332,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Suspended',
+            label: 'Bị khóa',
             value: '$suspended',
             icon: Icons.block,
             color: const Color(0xFFEF4444),
@@ -349,7 +349,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
         ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: const Text('Invite User Coming Soon'),
+            content: const Text('Tính năng mời người dùng sắp ra mắt'),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             margin: const EdgeInsets.all(16),
@@ -370,7 +370,7 @@ class _AdminUsersScreenState extends State<AdminUsersScreen> {
             Icon(Icons.person_add, color: Colors.white, size: 20),
             SizedBox(width: 8),
             Text(
-              'Invite User',
+              'Mời người dùng',
               style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,

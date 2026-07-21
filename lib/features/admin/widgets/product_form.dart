@@ -88,7 +88,7 @@ class _ProductFormState extends State<ProductForm> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                widget.product == null ? 'Add Product' : 'Edit Product',
+                widget.product == null ? 'Thêm sản phẩm' : 'Sửa sản phẩm',
                 style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
@@ -116,13 +116,13 @@ class _ProductFormState extends State<ProductForm> {
               const SizedBox(height: 16),
               TextFormField(
                 controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Product Name'),
-                validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                decoration: const InputDecoration(labelText: 'Tên sản phẩm'),
+                validator: (value) => value == null || value.isEmpty ? 'Bắt buộc' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
                 controller: _descriptionController,
-                decoration: const InputDecoration(labelText: 'Description'),
+                decoration: const InputDecoration(labelText: 'Mô tả'),
                 maxLines: 3,
               ),
               const SizedBox(height: 12),
@@ -131,18 +131,18 @@ class _ProductFormState extends State<ProductForm> {
                   Expanded(
                     child: TextFormField(
                       controller: _priceController,
-                      decoration: const InputDecoration(labelText: 'Price'),
+                      decoration: const InputDecoration(labelText: 'Giá bán'),
                       keyboardType: TextInputType.number,
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      validator: (value) => value == null || value.isEmpty ? 'Bắt buộc' : null,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: TextFormField(
                       controller: _stockController,
-                      decoration: const InputDecoration(labelText: 'Stock'),
+                      decoration: const InputDecoration(labelText: 'Kho hàng'),
                       keyboardType: TextInputType.number,
-                      validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                      validator: (value) => value == null || value.isEmpty ? 'Bắt buộc' : null,
                     ),
                   ),
                 ],
@@ -150,20 +150,20 @@ class _ProductFormState extends State<ProductForm> {
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
                 value: _selectedCategoryId,
-                decoration: const InputDecoration(labelText: 'Category'),
+                decoration: const InputDecoration(labelText: 'Danh mục'),
                 items: widget.categories.map((c) {
                   return DropdownMenuItem(value: c.id, child: Text(c.name));
                 }).toList(),
                 onChanged: (val) => setState(() => _selectedCategoryId = val),
-                validator: (val) => val == null ? 'Required' : null,
+                validator: (val) => val == null ? 'Bắt buộc' : null,
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<String>(
                 value: _status,
-                decoration: const InputDecoration(labelText: 'Status'),
+                decoration: const InputDecoration(labelText: 'Trạng thái'),
                 items: const [
-                  DropdownMenuItem(value: 'active', child: Text('Active')),
-                  DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+                  DropdownMenuItem(value: 'active', child: Text('Đang hoạt động')),
+                  DropdownMenuItem(value: 'inactive', child: Text('Ngưng hoạt động')),
                 ],
                 onChanged: (val) => setState(() => _status = val!),
               ),
@@ -188,7 +188,7 @@ class _ProductFormState extends State<ProductForm> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 child: Text(
-                  widget.product == null ? 'Create Product' : 'Update Product',
+                  widget.product == null ? 'Tạo sản phẩm' : 'Cập nhật sản phẩm',
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),

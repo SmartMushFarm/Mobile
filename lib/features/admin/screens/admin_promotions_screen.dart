@@ -38,7 +38,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load promotions';
+        _error = 'Không thể tải danh sách khuyến mãi';
       });
     }
   }
@@ -53,26 +53,26 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => StatefulBuilder(
+        builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Edit Promotion' : 'Create Promotion'),
+          title: Text(isEditing ? 'Sửa khuyến mãi' : 'Tạo khuyến mãi'),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 TextField(
                   controller: codeController,
-                  decoration: const InputDecoration(labelText: 'Promotion Code'),
+                  decoration: const InputDecoration(labelText: 'Mã khuyến mãi'),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: discountController,
-                  decoration: const InputDecoration(labelText: 'Discount Percent'),
+                  decoration: const InputDecoration(labelText: 'Phần trăm giảm giá'),
                   keyboardType: TextInputType.number,
                 ),
                 const SizedBox(height: 12),
                 ListTile(
-                  title: const Text('Valid From'),
+                  title: const Text('Có hiệu lực từ'),
                   subtitle: Text(DateFormat('yyyy-MM-dd').format(validFrom)),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
@@ -88,7 +88,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                   },
                 ),
                 ListTile(
-                  title: const Text('Valid To'),
+                  title: const Text('Có hiệu lực đến'),
                   subtitle: Text(DateFormat('yyyy-MM-dd').format(validTo)),
                   trailing: const Icon(Icons.calendar_today),
                   onTap: () async {
@@ -106,16 +106,16 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                 DropdownButtonFormField<String>(
                   value: status,
                   items: ['Active', 'Inactive']
-                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s == 'Active' ? 'Đang hoạt động' : 'Ngưng hoạt động')))
                       .toList(),
                   onChanged: (v) => setDialogState(() => status = v!),
-                  decoration: const InputDecoration(labelText: 'Status'),
+                  decoration: const InputDecoration(labelText: 'Trạng thái'),
                 ),
               ],
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Hủy')),
             ElevatedButton(
               onPressed: () async {
                 final newPromotion = PromotionModel(
@@ -141,7 +141,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                   // Show error
                 }
               },
-              child: Text(isEditing ? 'Save' : 'Create'),
+              child: Text(isEditing ? 'Lưu' : 'Tạo'),
             ),
           ],
         ),
@@ -154,7 +154,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        title: const Text('Manage Promotions', 
+        title: const Text('Quản lý khuyến mãi', 
           style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
         backgroundColor: Colors.white,
         elevation: 0,
@@ -195,7 +195,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                             const SizedBox(height: 16),
                             ElevatedButton(
                               onPressed: _loadPromotions,
-                              child: const Text('Try Again'),
+                              child: const Text('Thử lại'),
                             ),
                           ],
                         ),
@@ -203,7 +203,7 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                     ),
                   )
                 : _promotions.isEmpty
-                    ? const Center(child: Text('No promotions found.'))
+                    ? const Center(child: Text('Không tìm thấy khuyến mãi nào.'))
                     : ListView.builder(
                         padding: const EdgeInsets.all(16),
                         itemCount: _promotions.length,
@@ -234,10 +234,10 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   const SizedBox(height: 4),
-                                  Text('${p.discountPercent}% Discount', 
+                                  Text('Giảm giá ${p.discountPercent}%', 
                                     style: const TextStyle(color: AppColors.shopPrice, fontWeight: FontWeight.w600)),
                                   const SizedBox(height: 2),
-                                  Text('Exp: ${DateFormat('yyyy-MM-dd').format(p.validTo)}', 
+                                  Text('Hết hạn: ${DateFormat('yyyy-MM-dd').format(p.validTo)}', 
                                     style: const TextStyle(fontSize: 12)),
                                 ],
                               ),
@@ -254,11 +254,11 @@ class _AdminPromotionsScreenState extends State<AdminPromotionsScreen> {
                                       final confirm = await showDialog<bool>(
                                         context: context,
                                         builder: (context) => AlertDialog(
-                                          title: const Text('Delete Promotion'),
-                                          content: const Text('Are you sure you want to delete this promotion?'),
+                                          title: const Text('Xóa khuyến mãi'),
+                                          content: const Text('Bạn có chắc chắn muốn xóa khuyến mãi này không?'),
                                           actions: [
-                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
+                                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
+                                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Xóa', style: TextStyle(color: Colors.red))),
                                           ],
                                         ),
                                       );

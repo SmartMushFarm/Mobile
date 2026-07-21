@@ -80,9 +80,9 @@ class AdminDeviceMonitoringData {
   ];
 
   static const List<String> filterOptions = [
-    'All Devices',
-    'Online',
-    'Offline',
-    'Warning',
+    'Tất cả thiết bị',
+    'Trực tuyến',
+    'Ngoại tuyến',
+    'Cảnh báo',
   ];
 }
