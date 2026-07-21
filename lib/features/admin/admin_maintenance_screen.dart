@@ -94,9 +94,9 @@ class _AdminMaintenanceScreenState extends State<AdminMaintenanceScreen> {
         children: [
           _SummaryBox(label: 'Chờ duyệt', value: '$pending', color: AppColors.warning),
           const SizedBox(width: 12),
-          _SummaryBox(label: 'Đang sửa', value: '$processing', color: Colors.blue),
+          _SummaryBox(label: 'Đang xử lý', value: '$processing', color: Colors.blue),
           const SizedBox(width: 12),
-          _SummaryBox(label: 'Xong', value: '$completed', color: AppColors.success),
+          _SummaryBox(label: 'Hoàn thành', value: '$completed', color: AppColors.success),
         ],
       ),
     );

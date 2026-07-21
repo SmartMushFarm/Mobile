@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
@@ -41,13 +42,31 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
     }
   }
 
-  Future<void> _deletePreset(int id) async {
+  Future<void> _deletePreset(dynamic rawId) async {
+    final id = int.tryParse(rawId.toString());
+    if (id == null) return;
     try {
       await _presetService.deletePreset(id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa Preset')),
-      );
-      _fetchPresets();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa Preset thành công')),
+        );
+        _fetchPresets();
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        String msg = 'Lỗi khi xóa: $e';
+        if (e.response?.statusCode == 403) {
+          msg = 'Bạn không có quyền xóa preset này (Lỗi 403 từ Server)';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg), 
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -124,7 +143,7 @@ class _AdminPresetManagementScreenState extends State<AdminPresetManagementScree
     );
   }
 
-  void _showDeleteConfirm(int id) {
+  void _showDeleteConfirm(dynamic id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

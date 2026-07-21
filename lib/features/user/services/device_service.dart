@@ -89,6 +89,7 @@ class DeviceService {
     try {
       await ApiClient.instance.post('/devices', data: {
         'device_name': deviceName,
+        'owner_id': null, // Gửi null tường minh để Backend không tự lấy ID người tạo
       });
     } catch (e) {
       rethrow;

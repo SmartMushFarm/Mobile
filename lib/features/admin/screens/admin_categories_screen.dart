@@ -33,7 +33,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       });
     } catch (e) {
       setState(() => _isLoading = false);
-      _showSnackBar('Failed to load categories', isError: true);
+      _showSnackBar('Không thể tải danh mục', isError: true);
     }
   }
 
@@ -42,15 +42,15 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(category == null ? 'Add Category' : 'Edit Category'),
+        title: Text(category == null ? 'Thêm danh mục' : 'Sửa danh mục'),
         content: TextField(
           controller: nameController,
-          decoration: const InputDecoration(labelText: 'Category Name'),
+          decoration: const InputDecoration(labelText: 'Tên danh mục'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
+            child: const Text('Hủy'),
           ),
           ElevatedButton(
             onPressed: () async {
@@ -60,18 +60,18 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
               try {
                 if (category == null) {
                   await _apiService.createCategory({'name': nameController.text});
-                  _showSnackBar('Category created');
+                  _showSnackBar('Đã tạo danh mục');
                 } else {
                   await _apiService.updateCategory(category.id, {'name': nameController.text});
-                  _showSnackBar('Category updated');
+                  _showSnackBar('Đã cập nhật danh mục');
                 }
                 _loadCategories();
               } catch (e) {
                 _loadCategories();
-                _showSnackBar('Operation failed', isError: true);
+                _showSnackBar('Thao tác thất bại', isError: true);
               }
             },
-            child: const Text('Save'),
+            child: const Text('Lưu'),
           ),
         ],
       ),
@@ -82,13 +82,13 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Category'),
-        content: Text('Are you sure you want to delete "${category.name}"?'),
+        title: const Text('Xóa danh mục'),
+        content: Text('Bạn có chắc chắn muốn xóa "${category.name}"?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Hủy')),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+            child: const Text('Xóa', style: TextStyle(color: Colors.red)),
           ),
         ],
       ),
@@ -98,11 +98,11 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
       setState(() => _isLoading = true);
       try {
         await _apiService.deleteCategory(category.id);
-        _showSnackBar('Category deleted');
+        _showSnackBar('Đã xóa danh mục');
         _loadCategories();
       } catch (e) {
         _loadCategories();
-        _showSnackBar('Failed to delete category', isError: true);
+        _showSnackBar('Xóa danh mục thất bại', isError: true);
       }
     }
   }
@@ -190,7 +190,7 @@ class _AdminCategoriesScreenState extends State<AdminCategoriesScreen> {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Categories',
+              'Danh mục',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,

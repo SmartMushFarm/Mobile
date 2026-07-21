@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/features/user/services/preset_service.dart';
+import 'package:smartmush_farmer/features/auth/services/auth_service.dart';
+import 'package:smartmush_farmer/features/auth/models/user_model.dart';
 
 class PresetListScreen extends StatefulWidget {
   const PresetListScreen({super.key});
@@ -15,11 +18,25 @@ class _PresetListScreenState extends State<PresetListScreen> {
   final _presetService = PresetService();
   List<dynamic> _presets = [];
   bool _isLoading = true;
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
     _fetchPresets();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final userMap = await AuthService.getCurrentUser();
+    if (userMap != null) {
+      final user = UserModel.fromJson(userMap);
+      if (mounted) {
+        setState(() {
+          _isAdmin = (user.role ?? '').toLowerCase() == 'admin';
+        });
+      }
+    }
   }
 
   Future<void> _fetchPresets() async {
@@ -40,13 +57,31 @@ class _PresetListScreenState extends State<PresetListScreen> {
     }
   }
 
-  Future<void> _deletePreset(int id) async {
+  Future<void> _deletePreset(dynamic rawId) async {
+    final id = int.tryParse(rawId.toString());
+    if (id == null) return;
     try {
       await _presetService.deletePreset(id);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Đã xóa Preset')),
-      );
-      _fetchPresets();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Đã xóa Preset thành công')),
+        );
+        _fetchPresets();
+      }
+    } on DioException catch (e) {
+      if (mounted) {
+        String msg = 'Lỗi khi xóa: $e';
+        if (e.response?.statusCode == 403) {
+          msg = 'Bạn không có quyền xóa preset này (Lỗi 403)';
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(msg), 
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -85,9 +120,12 @@ class _PresetListScreenState extends State<PresetListScreen> {
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
                         child: ListTile(
+                          onTap: () {
+                            context.push('/presets/create', extra: preset).then((_) => _fetchPresets());
+                          },
                           title: Text(preset['preset_name'] ?? 'Không tên', style: const TextStyle(fontWeight: FontWeight.bold)),
                           subtitle: Text('Loại nấm: ${preset['mushroom_type'] ?? 'N/A'}'),
-                          trailing: isRecommended
+                          trailing: (isRecommended && !_isAdmin)
                               ? const Icon(Icons.star, color: Colors.amber)
                               : IconButton(
                                   icon: const Icon(Icons.delete, color: Colors.redAccent),
@@ -101,7 +139,7 @@ class _PresetListScreenState extends State<PresetListScreen> {
     );
   }
 
-  void _showDeleteConfirm(int id) {
+  void _showDeleteConfirm(dynamic id) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

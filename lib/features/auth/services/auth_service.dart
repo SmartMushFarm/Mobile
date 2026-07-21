@@ -3,9 +3,11 @@ import '../../../core/network/api_client.dart';
 import '../../../core/storage/auth_storage.dart';
 import '../../../core/config/api_config.dart';
 import '../models/user_model.dart';
+import 'auth_notifier.dart';
 
 class AuthService {
   static Future<Response> registerOTP({
+// ... (omitted for brevity in replacement, but I will provide the full block)
     required String name,
     required String email,
     required String password,
@@ -120,6 +122,7 @@ class AuthService {
 
       if (token != null) {
         await AuthStorage.saveToken(token);
+        AuthNotifier().notifyAuthChanged();
       }
 
       // Linh hoạt tìm user
@@ -146,7 +149,7 @@ class AuthService {
   }
 
   static Future<void> logout() async {
-    await AuthStorage.clear();
+    await AuthNotifier().logout();
   }
 
   static Future<Map<String, dynamic>?> getCurrentUser() async {

@@ -29,14 +29,14 @@ class AdminBottomNav extends StatelessWidget {
               _NavItem(
                 icon: Icons.dashboard_outlined,
                 activeIcon: Icons.dashboard,
-                label: 'Dashboard',
+                label: 'Tổng quan',
                 isActive: currentIndex == 0,
                 onTap: () => context.go('/admin'),
               ),
               _NavItem(
                 icon: Icons.sensors_outlined,
                 activeIcon: Icons.sensors,
-                label: 'Devices',
+                label: 'Thiết bị',
                 isActive: currentIndex == 1,
                 onTap: () => context.go('/admin/devices'),
               ),
@@ -64,7 +64,7 @@ class AdminBottomNav extends StatelessWidget {
               _NavItem(
                 icon: Icons.person_outline,
                 activeIcon: Icons.person,
-                label: 'Profile',
+                label: 'Cá nhân',
                 isActive: currentIndex == 4,
                 onTap: () => context.go('/admin/profile'),
               ),

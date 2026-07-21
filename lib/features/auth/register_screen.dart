@@ -52,28 +52,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
       setState(() => _isLoading = false);
 
       _showOTPDialog();
-    } catch (e) {
+    } on DioException catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
       
       String message = 'Đăng ký thất bại. Vui lòng thử lại.';
-      if (e is DioException) {
-        if (e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.connectionTimeout) {
-          message = 'Máy chủ phản hồi chậm. Vui lòng kiểm tra kết nối mạng và thử lại.';
-        } else if (e.response?.statusCode == 409) {
-          message = 'Email này đã được sử dụng. Vui lòng chọn email khác.';
-        } else if (e.response?.data != null && e.response?.data is Map) {
-          message = e.response?.data['message'] ?? message;
-        }
-      } else if (e is Exception) {
-        message = e.toString().replaceAll('Exception: ', '');
+      if (e.type == DioExceptionType.receiveTimeout || e.type == DioExceptionType.connectionTimeout) {
+        message = 'Máy chủ phản hồi chậm. Vui lòng kiểm tra kết nối mạng và thử lại.';
+      } else if (e.response?.statusCode == 409) {
+        message = 'Email này đã được sử dụng. Vui lòng chọn email khác.';
+      } else if (e.response?.data != null && e.response?.data is Map) {
+        message = e.response?.data['message'] ?? message;
       }
-      
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(message),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.redAccent,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      String message = e.toString().replaceAll('Exception: ', '');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(message),
+          behavior: SnackBarBehavior.floating,
         ),
       );
     }

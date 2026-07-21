@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../storage/auth_storage.dart';
+import '../../features/auth/services/auth_notifier.dart';
 
 class ApiClient {
   static final Dio _dio = Dio(
@@ -27,9 +28,10 @@ class ApiClient {
             }
             return handler.next(options);
           },
-          onError: (DioException e, handler) {
+          onError: (DioException e, handler) async {
             if (e.response?.statusCode == 401) {
-              // Handle unauthorized
+              // Token hết hạn hoặc không hợp lệ -> Xóa token và notify để Router tự redirect
+              await AuthNotifier().logout();
             }
             return handler.next(e);
           },

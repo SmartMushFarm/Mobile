@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
 import 'package:smartmush_farmer/core/widgets/user_bottom_nav.dart';
@@ -36,10 +37,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
         _user = user;
         _isLoading = false;
       });
+    } on DioException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _error = 'Không thể tải thông tin hồ sơ. Phiên làm việc có thể đã hết hạn.';
+      });
+      if (e.response?.statusCode == 401) {
+        if (mounted) context.go('/login');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Không thể tải thông tin hồ sơ. Vui lòng thử lại.';
+        _error = 'Đã có lỗi xảy ra khi tải hồ sơ.';
       });
     }
   }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:dio/dio.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:smartmush_farmer/app/theme/app_theme.dart';
@@ -58,14 +58,19 @@ class _HomeBoxListScreenState extends State<HomeBoxListScreen> {
         }).toList();
         _isLoading = false;
       });
+    } on DioException catch (e) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Không thể kết nối đến máy chủ hoặc phiên làm việc hết hạn.';
+      });
+      if (e.response?.statusCode == 401) {
+        if (mounted) context.go('/login');
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Không thể tải danh sách thiết bị';
+        _errorMessage = 'Đã có lỗi xảy ra. Vui lòng thử lại sau.';
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Lỗi: $e'), backgroundColor: Colors.redAccent),
-      );
     }
   }
 

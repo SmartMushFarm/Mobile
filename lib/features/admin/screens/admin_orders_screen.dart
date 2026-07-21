@@ -25,9 +25,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
   UserModel? _admin;
   bool _isLoading = true;
   String? _error;
-  String _selectedFilter = 'All Orders';
+  String _selectedFilter = 'Tất cả đơn hàng';
 
-  final List<String> _filterOptions = ['All Orders', 'Pending', 'Shipping', 'Delivered'];
+  final List<String> _filterOptions = ['Tất cả đơn hàng', 'Chờ xử lý', 'Đang giao', 'Đã giao'];
 
   @override
   void initState() {
@@ -53,7 +53,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _error = 'Failed to load orders';
+        _error = 'Không thể tải danh sách đơn hàng';
       });
     }
   }
@@ -88,14 +88,14 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       await _adminOrderService.updateOrderStatus(orderId: orderId, status: status);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Updated order #$orderId to $status')),
+          SnackBar(content: Text('Đã cập nhật đơn hàng #$orderId thành $status')),
         );
       }
     } catch (e) {
       if (mounted) {
         setState(() => _orders = oldOrders); // Rollback
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to update status'), backgroundColor: Colors.red),
+          const SnackBar(content: Text('Cập nhật trạng thái thất bại'), backgroundColor: Colors.red),
         );
       }
     }
@@ -103,11 +103,11 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
 
   List<OrderModel> get _filteredOrders {
     switch (_selectedFilter) {
-      case 'Pending':
+      case 'Chờ xử lý':
         return _orders.where((o) => o.status.toLowerCase() == 'pending').toList();
-      case 'Shipping':
+      case 'Đang giao':
         return _orders.where((o) => o.status.toLowerCase() == 'shipping').toList();
-      case 'Delivered':
+      case 'Đã giao':
         return _orders.where((o) => o.status.toLowerCase() == 'delivered' || o.status.toLowerCase() == 'completed').toList();
       default:
         return _orders;
@@ -132,7 +132,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                           children: [
                             Text(_error!, style: const TextStyle(color: Colors.red)),
                             const SizedBox(height: 16),
-                            ElevatedButton(onPressed: _loadOrders, child: const Text('Retry')),
+                            ElevatedButton(onPressed: _loadOrders, child: const Text('Thử lại')),
                           ],
                         ),
                       )
@@ -188,9 +188,9 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
             child: const Icon(Icons.eco, color: Colors.white, size: 22),
           ),
           const SizedBox(width: 12),
-          const Expanded(
+           const Expanded(
             child: Text(
-              'Orders',
+              'Đơn hàng',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
@@ -267,7 +267,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       children: [
         Expanded(
           child: AdminStatCard(
-            label: 'Total Orders',
+            label: 'Tổng đơn hàng',
             value: '$total',
             icon: Icons.shopping_bag,
             color: const Color(0xFF43B94E),
@@ -277,7 +277,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Pending',
+            label: 'Đang chờ',
             value: '$pending',
             icon: Icons.pending_actions,
             color: const Color(0xFFF59E0B),
@@ -287,7 +287,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: AdminStatCard(
-            label: 'Revenue',
+            label: 'Doanh thu',
             value: currencyFormat.format(revenue),
             icon: Icons.attach_money,
             color: const Color(0xFF22C55E),
@@ -322,7 +322,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          'Order History',
+          'Lịch sử đơn hàng',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
@@ -343,7 +343,7 @@ class _AdminOrdersScreenState extends State<AdminOrdersScreen> {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'No orders found',
+                    'Không tìm thấy đơn hàng nào',
                     style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
                   ),
                 ],

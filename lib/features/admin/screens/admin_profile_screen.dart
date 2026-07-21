@@ -94,27 +94,10 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
                             ),
                           ),
                           const SizedBox(height: 32),
-                          _buildInfoTile(Icons.phone, 'Phone', _admin?.phone ?? 'Not set'),
-                          _buildInfoTile(Icons.location_on, 'Address', _admin?.address ?? 'Not set'),
-                          _buildInfoTile(Icons.admin_panel_settings, 'Role', _admin?.role?.toUpperCase() ?? 'ADMIN'),
+                          _buildInfoTile(Icons.phone, 'Số điện thoại', _admin?.phone ?? 'Chưa thiết lập'),
+                          _buildInfoTile(Icons.location_on, 'Địa chỉ', _admin?.address ?? 'Chưa thiết lập'),
+                          _buildInfoTile(Icons.admin_panel_settings, 'Vai trò', _admin?.role?.toUpperCase() ?? 'ADMIN'),
                           const SizedBox(height: 40),
-                          const Text(
-                            'Admin Settings',
-                            style: TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          ListTile(
-                            leading: const Icon(Icons.settings),
-                            title: const Text('Account Settings'),
-                            trailing: const Icon(Icons.chevron_right),
-                            onTap: () {
-                              context.push('/admin/profile/settings');
-                            },
-                          ),
                         ],
                       ),
                     ),
@@ -148,7 +131,7 @@ class _AdminProfileScreenState extends State<AdminProfileScreen> {
           SizedBox(width: 52),
           Expanded(
             child: Text(
-              'Admin Profile',
+              'Hồ sơ Admin',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.w700,

@@ -43,9 +43,9 @@ class AdminDeviceCard extends StatelessWidget {
   }
 
   String get _statusLabel {
-    if (_isOnline) return 'Online';
-    if (_isWarning) return 'Warning';
-    return 'Offline';
+    if (_isOnline) return 'Trực tuyến';
+    if (_isWarning) return 'Cảnh báo';
+    return 'Ngoại tuyến';
   }
 
   void _showSnackBar(BuildContext context, String message) {
@@ -125,19 +125,19 @@ class AdminDeviceCard extends StatelessWidget {
         context.push('/admin/device-detail', extra: deviceId.toString());
         break;
       case 'restart':
-        _showSnackBar(context, 'Restarting $name...');
+        _showSnackBar(context, 'Đang khởi động lại $name...');
         break;
       case 'ota_update':
-        _showSnackBar(context, 'OTA Update for $name...');
+        _showSnackBar(context, 'Đang cập nhật OTA cho $name...');
         break;
       case 'details':
-        _showSnackBar(context, 'Opening details for $name...');
+        _showSnackBar(context, 'Đang mở chi tiết cho $name...');
         break;
       case 'reconnect':
-        _showSnackBar(context, 'Reconnecting $name...');
+        _showSnackBar(context, 'Đang kết nối lại $name...');
         break;
       case 'diagnostics':
-        _showSnackBar(context, 'Running diagnostics for $name...');
+        _showSnackBar(context, 'Đang chạy chẩn đoán cho $name...');
         break;
     }
   }
@@ -313,13 +313,13 @@ class AdminDeviceCard extends StatelessWidget {
         AdminMetricTile(
           icon: Icons.thermostat,
           value: temperature != null ? '${temperature!.toStringAsFixed(1)}°C' : '--',
-          label: 'Temperature',
+          label: 'Nhiệt độ',
           enabled: temperature != null,
         ),
         AdminMetricTile(
           icon: Icons.water_drop,
           value: humidity != null ? '${humidity!.toStringAsFixed(0)}%' : '--',
-          label: 'Humidity',
+          label: 'Độ ẩm',
           enabled: humidity != null,
         ),
         AdminMetricTile(
@@ -333,7 +333,7 @@ class AdminDeviceCard extends StatelessWidget {
   }
 
   Widget _buildLastSync() {
-    final disconnectText = _isOffline ? 'Disconnected' : 'Last sync';
+    final disconnectText = _isOffline ? 'Mất kết nối' : 'Cập nhật cuối';
     return Row(
       children: [
         Icon(
@@ -394,15 +394,17 @@ class _ActionButton extends StatelessWidget {
   String get _label {
     switch (action) {
       case 'restart':
-        return 'Restart';
+        return 'Khởi động lại';
       case 'ota_update':
-        return 'OTA Update';
+        return 'Cập nhật OTA';
       case 'details':
-        return 'Details';
+        return 'Chi tiết';
       case 'reconnect':
-        return 'Reconnect';
+        return 'Kết nối lại';
       case 'diagnostics':
-        return 'Diagnostics';
+        return 'Chẩn đoán';
+      case 'claim_code':
+        return 'Mã Claim';
       default:
         return action;
     }

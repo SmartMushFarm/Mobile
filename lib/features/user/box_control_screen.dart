@@ -211,11 +211,11 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
         // Silent refresh
         _fetchDeviceStatus(showLoading: false);
       }
-    } catch (e) {
+    } on DioException catch (e) {
       if (mounted) {
         setState(() => _mode = oldMode); // Rollback
         String errorMessage = e.toString();
-        if (e is DioException && e.response != null && e.response?.data != null) {
+        if (e.response != null && e.response?.data != null) {
           final data = e.response?.data;
           if (data is Map && data.containsKey('message')) {
             errorMessage = data['message'];
@@ -228,7 +228,16 @@ class _BoxControlScreenState extends State<BoxControlScreen> {
           SnackBar(
             content: Text('Lỗi: $errorMessage'),
             backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 5),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _mode = oldMode); // Rollback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi: ${e.toString()}'),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }

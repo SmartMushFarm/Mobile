@@ -18,7 +18,7 @@ class AdminDeviceScreen extends StatefulWidget {
 
 class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
   final DeviceService _deviceService = DeviceService();
-  String _selectedFilter = 'All Devices';
+  String _selectedFilter = 'Tất cả thiết bị';
   List<dynamic> _allDevices = [];
   bool _isLoading = true;
 
@@ -48,11 +48,11 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
 
   List<dynamic> get _filteredDevices {
     switch (_selectedFilter) {
-      case 'Online':
+      case 'Trực tuyến':
         return _allDevices.where((d) => d['status'] == 'Online' || d['status'] == 'Active').toList();
-      case 'Offline':
+      case 'Ngoại tuyến':
         return _allDevices.where((d) => d['status'] == 'Offline').toList();
-      case 'Warning':
+      case 'Cảnh báo':
         return _allDevices.where((d) => d['status'] == 'Warning').toList();
       default:
         return _allDevices;
@@ -273,13 +273,13 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
 
     return Row(
       children: [
-        Expanded(child: _buildStatChip('Online', '$online', AppColors.success)),
+        Expanded(child: _buildStatChip('Trực tuyến', '$online', AppColors.success)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatChip('Offline', '$offline', const Color(0xFF9CA3AF))),
+        Expanded(child: _buildStatChip('Ngoại tuyến', '$offline', const Color(0xFF9CA3AF))),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatChip('Warning', '$warning', AppColors.warning)),
+        Expanded(child: _buildStatChip('Cảnh báo', '$warning', AppColors.warning)),
         const SizedBox(width: 8),
-        Expanded(child: _buildStatChip('Total', '${_allDevices.length}', AppColors.primary)),
+        Expanded(child: _buildStatChip('Tổng số', '${_allDevices.length}', AppColors.primary)),
       ],
     );
   }
@@ -339,9 +339,9 @@ class _AdminDeviceScreenState extends State<AdminDeviceScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Device Monitoring',
-          style: const TextStyle(
+        const Text(
+          'Giám sát thiết bị',
+          style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,

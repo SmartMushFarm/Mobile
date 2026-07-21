@@ -20,6 +20,7 @@ class AppTextField extends StatelessWidget {
     this.contentPadding = const EdgeInsets.fromLTRB(49, 19, 17, 19),
     this.hintStyle,
     this.maxLines = 1,
+    this.enabled = true,
   });
 
   final String label;
@@ -37,6 +38,7 @@ class AppTextField extends StatelessWidget {
   final EdgeInsets contentPadding;
   final TextStyle? hintStyle;
   final int? maxLines;
+  final bool enabled;
 
   @override
   Widget build(BuildContext context) {
@@ -47,7 +49,11 @@ class AppTextField extends StatelessWidget {
           padding: labelPadding,
           child: Text(
             label,
-            style: GoogleFonts.inter(textStyle: AppTextStyles.loginFieldLabel),
+            style: GoogleFonts.inter(
+              textStyle: AppTextStyles.loginFieldLabel.copyWith(
+                color: enabled ? null : AppColors.loginHint,
+              ),
+            ),
           ),
         ),
         SizedBox(height: labelSpacing),
@@ -58,14 +64,21 @@ class AppTextField extends StatelessWidget {
           textInputAction: textInputAction,
           validator: validator,
           maxLines: maxLines,
-          style: GoogleFonts.inter(textStyle: AppTextStyles.loginFieldText),
+          enabled: enabled,
+          style: GoogleFonts.inter(
+            textStyle: AppTextStyles.loginFieldText.copyWith(
+              color: enabled ? null : AppColors.loginHint,
+            ),
+          ),
           decoration: InputDecoration(
             hintText: hintText,
             hintStyle: GoogleFonts.inter(
               textStyle: hintStyle ?? AppTextStyles.loginFieldHint,
             ),
             filled: true,
-            fillColor: AppColors.loginInputFill,
+            fillColor: enabled
+                ? AppColors.loginInputFill
+                : AppColors.loginInputFill.withValues(alpha: 0.5),
             contentPadding: contentPadding,
             prefixIcon: prefixIcon == null
                 ? null
@@ -82,6 +95,13 @@ class AppTextField extends StatelessWidget {
             suffixIcon: suffix,
             suffixIconConstraints:
                 const BoxConstraints(minWidth: 0, minHeight: 0),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(
+                color: AppColors.loginInputBorder,
+                width: 0.5,
+              ),
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: AppColors.loginInputBorder),
